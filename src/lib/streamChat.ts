@@ -16,6 +16,8 @@ export async function streamChat({
   companionMode,
   userState,
   memoryMoment,
+  lastFormulationStyle,
+  lastQuestionType,
 }: {
   messages: Message[];
   onDelta: (deltaText: string) => void;
