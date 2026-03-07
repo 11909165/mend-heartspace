@@ -63,6 +63,8 @@ export default function AICompanion() {
   const [reflectionAttachedTo, setReflectionAttachedTo] = useState<string | null>(null);
   const [memoryMomentUsed, setMemoryMomentUsed] = useState(false);
   const [pendingMemoryMoment, setPendingMemoryMoment] = useState<string | null>(null);
+  const [lastFormulationStyle, setLastFormulationStyle] = useState<string | null>(null);
+  const [lastQuestionType, setLastQuestionType] = useState<string | null>(null);
 
   const { reflectionMessage, evaluate: evaluateReflection, reset: resetReflection, suppressToday } = useReflectionBubble(user?.id);
 
@@ -176,6 +178,8 @@ export default function AICompanion() {
         await streamChat({
           messages: apiMessages,
           companionMode: mode,
+          lastFormulationStyle,
+          lastQuestionType,
           onDelta: (chunk) => {
             assistantContent += chunk;
             setMessages(prev => {
@@ -190,6 +194,8 @@ export default function AICompanion() {
           },
           onDone: (result) => {
             console.log("[MEND turn]", { experience_mode: mode, communication_bucket: result.communicationBucket });
+            if (result.formulationStyle) setLastFormulationStyle(result.formulationStyle);
+            if (result.questionType) setLastQuestionType(result.questionType);
             setIsLoading(false);
             setTimeout(() => setShowRedirectMessage(true), 800);
           },
@@ -273,6 +279,8 @@ export default function AICompanion() {
         companionMode: mode,
         userState: userState || undefined,
         memoryMoment: memoryMoment,
+        lastFormulationStyle,
+        lastQuestionType,
         onDelta: (chunk) => {
           assistantContent += chunk;
           setMessages(prev => {
@@ -287,6 +295,8 @@ export default function AICompanion() {
         },
         onDone: async (result) => {
           console.log("[MEND turn]", { experience_mode: mode, communication_bucket: result.communicationBucket });
+          if (result.formulationStyle) setLastFormulationStyle(result.formulationStyle);
+          if (result.questionType) setLastQuestionType(result.questionType);
 
           const { data: assistantMsgData, error: assistantMsgError } = await supabase
             .from("mend_messages")

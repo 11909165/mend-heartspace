@@ -4,6 +4,8 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mend_chat`;
 
 export interface StreamChatResult {
   communicationBucket: string | null;
+  formulationStyle: string | null;
+  questionType: string | null;
 }
 
 export async function streamChat({
@@ -14,6 +16,8 @@ export async function streamChat({
   companionMode,
   userState,
   memoryMoment,
+  lastFormulationStyle,
+  lastQuestionType,
 }: {
   messages: Message[];
   onDelta: (deltaText: string) => void;
@@ -22,6 +26,8 @@ export async function streamChat({
   companionMode?: string;
   userState?: any;
   memoryMoment?: string;
+  lastFormulationStyle?: string | null;
+  lastQuestionType?: string | null;
 }) {
   const resp = await fetch(CHAT_URL, {
     method: "POST",
@@ -34,23 +40,27 @@ export async function streamChat({
       companion_mode: companionMode,
       user_state: userState,
       memory_moment: memoryMoment,
+      last_formulation_style: lastFormulationStyle,
+      last_question_type: lastQuestionType,
     }),
   });
 
   // Read bucket header before consuming body
   const communicationBucket = resp.headers.get("X-Communication-Bucket");
+  const formulationStyle = resp.headers.get("X-Formulation-Style");
+  const questionType = resp.headers.get("X-Question-Type");
 
   // Handle error responses
   if (!resp.ok) {
     const errorData = await resp.json().catch(() => ({ error: "Connection failed" }));
     onError?.(errorData.error || "Something went wrong");
-    onDone({ communicationBucket });
+    onDone({ communicationBucket, formulationStyle, questionType });
     return;
   }
 
   if (!resp.body) {
     onError?.("Failed to start stream");
-    onDone({ communicationBucket });
+    onDone({ communicationBucket, formulationStyle, questionType });
     return;
   }
 
@@ -108,5 +118,5 @@ export async function streamChat({
     }
   }
 
-  onDone({ communicationBucket });
+  onDone({ communicationBucket, formulationStyle, questionType });
 }

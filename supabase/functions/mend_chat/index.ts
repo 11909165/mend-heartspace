@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-  "Access-Control-Expose-Headers": "X-Communication-Bucket",
+  "Access-Control-Expose-Headers": "X-Communication-Bucket, X-Formulation-Style, X-Question-Type",
 };
 
 /* ── Bucket definitions per mode ── */
@@ -326,20 +326,14 @@ function pickRandom<T>(arr: readonly T[], exclude?: T): T {
   return filtered[Math.floor(Math.random() * filtered.length)];
 }
 
-/* ── Per-request state for anti-repetition (reset each serve call) ── */
-let lastFormulationStyle: string | null = null;
-let lastQuestionType: string | null = null;
-
 /* ── Pass B: Premium rewrite prompt ── */
-function buildRewritePrompt(mode: string, bucket: string): string {
-  const formulationStyle = pickRandom(FORMULATION_STYLES, lastFormulationStyle as any);
-  const questionType = pickRandom(QUESTION_TYPES, lastQuestionType as any);
-  lastFormulationStyle = formulationStyle;
-  lastQuestionType = questionType;
+function buildRewritePrompt(mode: string, bucket: string, prevFormulationStyle?: string | null, prevQuestionType?: string | null): { prompt: string; formulationStyle: string; questionType: string } {
+  const formulationStyle = pickRandom(FORMULATION_STYLES, prevFormulationStyle as any);
+  const questionType = pickRandom(QUESTION_TYPES, prevQuestionType as any);
 
   const noQuestionMode = mode === "Just listen" || mode === "Challenge me gently";
 
-  return `You are rewriting a draft companion response into a premium, emotionally intelligent response.
+  const prompt = `You are rewriting a draft companion response into a premium, emotionally intelligent response.
 
 Your goal is to make it feel deeply human, natural, and psychologically attuned — not templated.
 
@@ -354,7 +348,7 @@ Use the assigned formulation style only:
 FORMULATION_STYLE: ${formulationStyle}
 
 The previous formulation style was:
-PREVIOUS_STYLE: ${lastFormulationStyle || "none"}
+PREVIOUS_STYLE: ${prevFormulationStyle || "none"}
 
 Do not reuse the previous style.
 
@@ -362,7 +356,7 @@ ${noQuestionMode ? "" : `The assigned question type is:
 QUESTION_TYPE: ${questionType}
 
 The previous question type was:
-PREVIOUS_QUESTION_TYPE: ${lastQuestionType || "none"}
+PREVIOUS_QUESTION_TYPE: ${prevQuestionType || "none"}
 
 Do not reuse the previous question type.`}
 
@@ -425,6 +419,8 @@ No explanations.
 No labels.
 No JSON.
 No meta commentary.`;
+
+  return { prompt, formulationStyle, questionType };
 }
 
 /* ── Pass C: Memory extraction prompt ── */
@@ -649,7 +645,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, companion_mode, user_state, memory_moment } = await req.json();
+    const { messages, companion_mode, user_state, memory_moment, last_formulation_style, last_question_type } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -705,7 +701,7 @@ serve(async (req) => {
     console.log("[mend_chat] Pass A draft generated, length:", draftResponse.length);
 
     // ── Pass B: Premium rewrite (streaming) ──
-    const rewritePrompt = buildRewritePrompt(mode, bucket);
+    const { prompt: rewritePrompt, formulationStyle, questionType } = buildRewritePrompt(mode, bucket, last_formulation_style, last_question_type);
     const rewriteMessages = [
       ...messages,
       { role: "assistant", content: draftResponse },
@@ -845,6 +841,8 @@ serve(async (req) => {
         ...corsHeaders,
         "Content-Type": "text/event-stream",
         "X-Communication-Bucket": bucket,
+        "X-Formulation-Style": formulationStyle,
+        "X-Question-Type": questionType,
       },
     });
   } catch (e) {
