@@ -63,6 +63,8 @@ export default function AICompanion() {
   const [reflectionAttachedTo, setReflectionAttachedTo] = useState<string | null>(null);
   const [memoryMomentUsed, setMemoryMomentUsed] = useState(false);
   const [pendingMemoryMoment, setPendingMemoryMoment] = useState<string | null>(null);
+  const [lastFormulationStyle, setLastFormulationStyle] = useState<string | null>(null);
+  const [lastQuestionType, setLastQuestionType] = useState<string | null>(null);
 
   const { reflectionMessage, evaluate: evaluateReflection, reset: resetReflection, suppressToday } = useReflectionBubble(user?.id);
 
