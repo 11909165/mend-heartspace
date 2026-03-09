@@ -7,7 +7,7 @@ interface Node {
   x: number;
   y: number;
   cluster: number;
-  size: number; // relative size 0.6–1.4
+  size: number;
 }
 
 interface Edge {
@@ -27,37 +27,42 @@ function generateGraph(nodeCount: number): { nodes: Node[]; edges: Edge[] } {
   const rand = seededRandom(42);
   const nodes: Node[] = [];
 
-  // 3 cluster centers — spread wider for spacious feel
+  // 3 well-separated cluster centers for clear visual grouping
   const centers = [
-    { x: 28, y: 35 },
-    { x: 72, y: 30 },
-    { x: 50, y: 68 },
+    { x: 24, y: 32 },  // top-left: emotional states
+    { x: 76, y: 28 },  // top-right: stabilizing moments
+    { x: 50, y: 72 },  // bottom-center: contextual signals
   ];
 
   for (let i = 0; i < nodeCount; i++) {
     const cluster = i % 3;
     const cx = centers[cluster].x;
     const cy = centers[cluster].y;
-    // Vary size: some dominant (larger), most moderate, a few small
+    // Tighter spread within clusters for cohesion, but enough variety
+    const spread = 18;
     const sizeRoll = rand();
-    const size = sizeRoll > 0.85 ? 1.3 + rand() * 0.15 : sizeRoll > 0.4 ? 0.9 + rand() * 0.2 : 0.55 + rand() * 0.25;
+    const size = sizeRoll > 0.82 ? 1.25 + rand() * 0.2 : sizeRoll > 0.35 ? 0.85 + rand() * 0.25 : 0.5 + rand() * 0.25;
     nodes.push({
       id: i,
-      x: cx + (rand() - 0.5) * 36,
-      y: cy + (rand() - 0.5) * 32,
+      x: cx + (rand() - 0.5) * spread * 2,
+      y: cy + (rand() - 0.5) * spread * 1.6,
       cluster,
       size,
     });
   }
 
-  // Connect nearby nodes — thin, sparse connections
+  // Connect nearby nodes within same cluster preferentially
   const edges: Edge[] = [];
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
       const dx = nodes[i].x - nodes[j].x;
       const dy = nodes[i].y - nodes[j].y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 20 && rand() > 0.5) {
+      const sameCluster = nodes[i].cluster === nodes[j].cluster;
+      // Same-cluster connections more likely, cross-cluster rare
+      if (sameCluster && dist < 16 && rand() > 0.4) {
+        edges.push({ from: i, to: j });
+      } else if (!sameCluster && dist < 22 && rand() > 0.88) {
         edges.push({ from: i, to: j });
       }
     }
@@ -66,7 +71,6 @@ function generateGraph(nodeCount: number): { nodes: Node[]; edges: Edge[] } {
   return { nodes, edges };
 }
 
-// Pulse timing per baseline state
 const pulseConfig: Record<BaselineState, { duration: number; ease: string }> = {
   calm: { duration: 5, ease: "easeInOut" },
   elevated: { duration: 3, ease: "easeInOut" },
@@ -74,31 +78,29 @@ const pulseConfig: Record<BaselineState, { duration: number; ease: string }> = {
   high: { duration: 1.8, ease: "easeInOut" },
 };
 
-// Cluster color mapping — MEND palette
-// Cluster 0: lavender (emotional states)
-// Cluster 1: mint (stabilizing moments)
-// Cluster 2: neutral gray (contextual signals)
+// Cluster colors — MEND palette
 const clusterColors = {
   node: [
-    "hsl(270 45% 72%)",  // lavender
-    "hsl(165 35% 70%)",  // mint
-    "hsl(250 12% 68%)",  // neutral gray
+    "hsl(270 45% 72%)",  // lavender — emotional states
+    "hsl(165 35% 70%)",  // mint — stabilizing moments
+    "hsl(250 12% 68%)",  // neutral gray — context
   ],
   nodeEmpty: [
-    "hsl(270 20% 82%)",
-    "hsl(165 18% 82%)",
-    "hsl(250 10% 82%)",
+    "hsl(270 20% 84%)",
+    "hsl(165 18% 84%)",
+    "hsl(250 10% 84%)",
   ],
   glow: [
-    "hsl(270 45% 80%)",
-    "hsl(165 35% 78%)",
+    "hsl(270 40% 78%)",
+    "hsl(165 30% 76%)",
     "hsl(250 12% 76%)",
   ],
   edge: [
-    "hsl(270 30% 78%)",
-    "hsl(165 25% 78%)",
-    "hsl(250 10% 80%)",
+    "hsl(270 25% 82%)",
+    "hsl(165 20% 82%)",
+    "hsl(250 8% 84%)",
   ],
+  edgeCross: "hsl(250 10% 86%)",
 };
 
 interface BrainVisualizationProps {
@@ -112,7 +114,7 @@ export function BrainVisualization({
   highlightCluster,
   isEmpty = false,
 }: BrainVisualizationProps) {
-  const nodeCount = isEmpty ? 14 : 48;
+  const nodeCount = isEmpty ? 15 : 48;
   const { nodes, edges } = useMemo(() => generateGraph(nodeCount), [nodeCount]);
   const pulse = pulseConfig[baselineState];
 
@@ -124,116 +126,125 @@ export function BrainVisualization({
   }, [baselineState]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.8 }}
-      className="relative w-full mx-auto"
+    <svg
+      viewBox="0 0 100 100"
+      className="w-full h-full"
+      aria-label="Emotional pattern visualization"
     >
-      <svg
-        viewBox="0 0 100 100"
-        className="w-full h-full"
-        aria-label="Emotional pattern visualization"
-      >
-        {/* Subtle grid background */}
-        <defs>
-          <pattern id="pattern-grid" width="5" height="5" patternUnits="userSpaceOnUse">
-            <path
-              d="M 5 0 L 0 0 0 5"
-              fill="none"
-              stroke="hsl(250 15% 80%)"
-              strokeWidth="0.08"
-              opacity="0.4"
-            />
-          </pattern>
-        </defs>
-        <rect width="100" height="100" fill="url(#pattern-grid)" />
+      {/* Subtle grid texture */}
+      <defs>
+        <pattern id="pattern-grid" width="4" height="4" patternUnits="userSpaceOnUse">
+          <path
+            d="M 4 0 L 0 0 0 4"
+            fill="none"
+            stroke="hsl(250 15% 82%)"
+            strokeWidth="0.06"
+            opacity="0.35"
+          />
+        </pattern>
+        {/* Soft glow filters per cluster */}
+        <filter id="glow-0" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="1.2" />
+        </filter>
+        <filter id="glow-1" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="1.0" />
+        </filter>
+        <filter id="glow-2" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="0.9" />
+        </filter>
+      </defs>
+      <rect width="100" height="100" fill="url(#pattern-grid)" />
 
-        {/* Edges — thin, low opacity */}
-        {edges.map((e, i) => {
-          const a = nodes[e.from];
-          const b = nodes[e.to];
-          const edgeColor = isEmpty
-            ? "hsl(250 10% 84%)"
-            : clusterColors.edge[a.cluster] || clusterColors.edge[0];
-          return (
-            <line
-              key={`e-${i}`}
-              x1={a.x}
-              y1={a.y}
-              x2={b.x}
-              y2={b.y}
-              stroke={edgeColor}
-              strokeWidth={0.15}
-              opacity={isEmpty ? 0.2 : 0.22}
-            />
-          );
-        })}
+      {/* Edges */}
+      {edges.map((e, i) => {
+        const a = nodes[e.from];
+        const b = nodes[e.to];
+        const sameCluster = a.cluster === b.cluster;
+        const edgeColor = isEmpty
+          ? "hsl(250 8% 86%)"
+          : sameCluster
+          ? clusterColors.edge[a.cluster]
+          : clusterColors.edgeCross;
+        return (
+          <line
+            key={`e-${i}`}
+            x1={a.x}
+            y1={a.y}
+            x2={b.x}
+            y2={b.y}
+            stroke={edgeColor}
+            strokeWidth={sameCluster ? 0.14 : 0.08}
+            opacity={isEmpty ? 0.18 : sameCluster ? 0.25 : 0.12}
+          />
+        );
+      })}
 
-        {/* Glow layer for highlight cluster */}
-        {!isEmpty &&
-          nodes
-            .filter((n) => n.cluster === highlightCluster)
-            .map((node) => (
-              <motion.circle
-                key={`glow-${node.id}`}
-                cx={node.x}
-                cy={node.y}
-                r={node.size * 3.2}
-                fill={clusterColors.glow[node.cluster]}
-                animate={{ opacity: [0, 0.12, 0] }}
-                transition={{
-                  duration: pulse.duration * 1.3,
-                  ease: "easeInOut",
-                  repeat: Infinity,
-                  delay: node.id * 0.13,
-                }}
-              />
-            ))}
-
-        {/* Nodes */}
-        {nodes.map((node) => {
-          const isHighlight = node.cluster === highlightCluster && !isEmpty;
-          const baseRadius = isEmpty
-            ? node.size * 0.7
-            : isHighlight
-            ? node.size * 1.6
-            : node.size * 1.1;
-
-          const delay =
-            baselineState === "fluctuating"
-              ? (node.id * 0.37 + tick * 0.1) % pulse.duration
-              : node.id * 0.1;
-
-          const fillColor = isEmpty
-            ? clusterColors.nodeEmpty[node.cluster]
-            : clusterColors.node[node.cluster];
-
+      {/* Ambient glow halos for active nodes */}
+      {!isEmpty &&
+        nodes.map((node) => {
+          const isHighlight = node.cluster === highlightCluster;
+          if (!isHighlight && node.size < 1.0) return null;
           return (
             <motion.circle
-              key={node.id}
+              key={`glow-${node.id}`}
               cx={node.x}
               cy={node.y}
-              r={baseRadius}
-              fill={fillColor}
-              animate={{
-                r: [baseRadius, baseRadius * 1.2, baseRadius],
-                opacity: isEmpty
-                  ? [0.25, 0.4, 0.25]
-                  : isHighlight
-                  ? [0.65, 0.9, 0.65]
-                  : [0.35, 0.55, 0.35],
-              }}
+              r={node.size * 3}
+              fill={clusterColors.glow[node.cluster]}
+              filter={`url(#glow-${node.cluster})`}
+              animate={{ opacity: [0, isHighlight ? 0.14 : 0.08, 0] }}
               transition={{
-                duration: pulse.duration,
-                ease: pulse.ease as any,
+                duration: pulse.duration * 1.4,
+                ease: "easeInOut",
                 repeat: Infinity,
-                delay,
+                delay: node.id * 0.12,
               }}
             />
           );
         })}
-      </svg>
-    </motion.div>
+
+      {/* Nodes */}
+      {nodes.map((node) => {
+        const isHighlight = node.cluster === highlightCluster && !isEmpty;
+        const baseRadius = isEmpty
+          ? node.size * 0.7
+          : isHighlight
+          ? node.size * 1.5
+          : node.size * 1.05;
+
+        const delay =
+          baselineState === "fluctuating"
+            ? (node.id * 0.37 + tick * 0.1) % pulse.duration
+            : node.id * 0.1;
+
+        const fillColor = isEmpty
+          ? clusterColors.nodeEmpty[node.cluster]
+          : clusterColors.node[node.cluster];
+
+        return (
+          <motion.circle
+            key={node.id}
+            cx={node.x}
+            cy={node.y}
+            r={baseRadius}
+            fill={fillColor}
+            animate={{
+              r: [baseRadius, baseRadius * 1.18, baseRadius],
+              opacity: isEmpty
+                ? [0.22, 0.38, 0.22]
+                : isHighlight
+                ? [0.6, 0.88, 0.6]
+                : [0.32, 0.52, 0.32],
+            }}
+            transition={{
+              duration: pulse.duration,
+              ease: pulse.ease as any,
+              repeat: Infinity,
+              delay,
+            }}
+          />
+        );
+      })}
+    </svg>
   );
 }
