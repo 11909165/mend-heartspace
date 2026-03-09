@@ -11,6 +11,7 @@ import { getPatternsEmptyHeading, getPatternsEmptyBody, getStartConversationCTA,
 import { MoodTimeline } from "@/components/patterns/MoodTimeline";
 import { BrainVisualization } from "@/components/patterns/BrainVisualization";
 import { InsightCards } from "@/components/patterns/InsightCards";
+import { DateRangeSelector, type DateRange } from "@/components/patterns/DateRangeSelector";
 import { computePatternSnapshot, type PatternSnapshot } from "@/lib/patternSnapshot";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -64,7 +65,7 @@ function InsightCard({ pattern, index, isEmotion, isLocked }: { pattern: Pattern
         transition: { duration: 0.2, ease: "easeOut" }
       } : undefined}
       whileTap={!isLocked ? { scale: 0.995 } : undefined}
-      className={`rounded-2xl p-5 shadow-card cursor-default transition-shadow duration-200 ${
+      className={`rounded-2xl p-4 shadow-card cursor-default transition-shadow duration-200 ${
         isLocked 
           ? "bg-muted/30 border border-border/30" 
           : isEmotion 
@@ -72,34 +73,34 @@ function InsightCard({ pattern, index, isEmotion, isLocked }: { pattern: Pattern
             : "bg-card hover:shadow-hover"
       }`}
     >
-      <div className="flex items-start gap-3.5">
+      <div className="flex items-start gap-3">
         <motion.div 
-          className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-200 ${
+          className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-200 ${
             isLocked ? "bg-muted/40" : isEmotion ? "bg-lilac-100/70" : "bg-muted/50"
           }`}
           whileHover={!isLocked ? { scale: 1.05 } : undefined}
         >
-          <Icon className={`w-4 h-4 transition-colors duration-200 ${
+          <Icon className={`w-3.5 h-3.5 transition-colors duration-200 ${
             isLocked ? "text-muted-foreground/40" : isEmotion ? "text-lilac-600" : "text-muted-foreground"
           }`} />
         </motion.div>
         <div className="flex-1 min-w-0">
-          <h3 className={`text-[15px] font-serif font-semibold mb-1.5 ${
+          <h3 className={`text-[14px] font-serif font-semibold mb-1 ${
             isLocked ? "text-muted-foreground/60" : "text-foreground"
           }`}>{pattern.title}</h3>
           {isLocked ? (
             <>
-              <p className="text-sm text-muted-foreground/30 leading-snug blur-[3px] select-none" aria-hidden>
+              <p className="text-[13px] text-muted-foreground/30 leading-snug blur-[3px] select-none" aria-hidden>
                 A gentle pattern is forming here...
               </p>
-              <p className="text-[11px] text-muted-foreground/50 mt-2.5 italic">
+              <p className="text-[11px] text-muted-foreground/50 mt-1.5 italic">
                 This insight unlocks as your story grows.
               </p>
             </>
           ) : (
             <>
-              <p className="text-sm text-foreground/75 leading-snug">{pattern.body}</p>
-              <p className="text-[11px] text-muted-foreground/70 mt-2.5">Based on recent reflections</p>
+              <p className="text-[13px] text-foreground/75 leading-snug">{pattern.body}</p>
+              <p className="text-[10px] text-muted-foreground/70 mt-1.5">Based on recent reflections</p>
             </>
           )}
         </div>
@@ -107,8 +108,6 @@ function InsightCard({ pattern, index, isEmotion, isLocked }: { pattern: Pattern
     </motion.div>
   );
 }
-
-// RecentMoments replaced by MoodTimeline component
 
 function CheckInCard({ ctaText }: { ctaText: string }) {
   return (
@@ -206,7 +205,7 @@ function MobileCarousel({ patterns }: { patterns: (PatternCardType & { isLocked:
       </AnimatePresence>
       
       {/* Dot indicators */}
-      <div className="flex justify-center gap-2 mt-4">
+      <div className="flex justify-center gap-2 mt-3">
         {patterns.map((_, index) => (
           <button
             key={index}
@@ -221,13 +220,12 @@ function MobileCarousel({ patterns }: { patterns: (PatternCardType & { isLocked:
         ))}
       </div>
       
-      {/* Swipe hint */}
       {patterns.length > 1 && currentIndex === 0 && (
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="text-center text-xs text-muted-foreground/60 mt-2"
+          className="text-center text-xs text-muted-foreground/60 mt-1.5"
         >
           Swipe to see more
         </motion.p>
@@ -243,33 +241,26 @@ const lockedPlaceholders: PatternCardType[] = [
 ];
 
 function getDisplayPatterns(patterns: PatternCardType[], signalCount: number): (PatternCardType & { isLocked: boolean })[] {
-  // Sort patterns by priority (emotion first)
   const sortedPatterns = [...patterns]
     .sort((a, b) => (patternPriority[a.type] ?? 99) - (patternPriority[b.type] ?? 99));
 
-  // Build display list with lock states
   const displayPatterns: (PatternCardType & { isLocked: boolean })[] = [];
   
-  // Cards 1-2: always visible when >=3 signals
   for (let i = 0; i < 2; i++) {
     if (sortedPatterns[i]) {
       displayPatterns.push({ ...sortedPatterns[i], isLocked: false });
     }
   }
 
-  // Card 3: locked until >=7 signals
   if (sortedPatterns[2]) {
     displayPatterns.push({ ...sortedPatterns[2], isLocked: signalCount < 7 });
   } else if (displayPatterns.length >= 2) {
-    // Show placeholder if no real pattern exists yet
     displayPatterns.push({ ...lockedPlaceholders[0], isLocked: true });
   }
 
-  // Card 4: locked until >=12 signals
   if (sortedPatterns[3]) {
     displayPatterns.push({ ...sortedPatterns[3], isLocked: signalCount < 12 });
   } else if (displayPatterns.length >= 3) {
-    // Show placeholder if no real pattern exists yet
     displayPatterns.push({ ...lockedPlaceholders[1], isLocked: true });
   }
 
@@ -287,7 +278,7 @@ function DynamicInsights({ patterns, moodTimeline, signalCount, ctaText }: { pat
       {isMobile ? (
         <MobileCarousel patterns={displayPatterns} />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {displayPatterns.map((pattern, index) => (
             <InsightCard 
               key={pattern.type + index} 
@@ -300,13 +291,12 @@ function DynamicInsights({ patterns, moodTimeline, signalCount, ctaText }: { pat
         </div>
       )}
 
-      {/* CTA for locked cards */}
       {hasLockedCards && (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.2 }}
-          className="flex justify-center mt-6"
+          className="flex justify-center mt-4"
         >
           <Link to="/companion">
             <Button 
@@ -321,7 +311,6 @@ function DynamicInsights({ patterns, moodTimeline, signalCount, ctaText }: { pat
         </motion.div>
       )}
 
-      {/* Mood Pattern Timeline */}
       {moodTimeline.length >= 3 && <MoodTimeline entries={moodTimeline} />}
     </>
   );
@@ -333,11 +322,11 @@ export default function PatternsInsights() {
   const phase = useUserPhase(data?.signals);
   const [snapshot, setSnapshot] = useState<PatternSnapshot | null>(null);
   const [snapshotLoading, setSnapshotLoading] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange>("30");
   
   const signalCount = data?.signals?.length ?? 0;
   const hasEnoughData = signalCount >= 3;
 
-  // Compute snapshot when user is available
   useEffect(() => {
     if (!user?.id) return;
     setSnapshotLoading(true);
@@ -347,7 +336,6 @@ export default function PatternsInsights() {
       .finally(() => setSnapshotLoading(false));
   }, [user?.id, data?.signals]);
 
-  // Phase-aware copy
   const emptyHeading = getPatternsEmptyHeading(phase);
   const emptyBody = getPatternsEmptyBody(phase);
   const startCTA = getStartConversationCTA(phase);
@@ -358,85 +346,128 @@ export default function PatternsInsights() {
   return (
     <Layout>
       <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-b from-background to-muted/20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
-          {/* Header section */}
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10 max-w-3xl">
+          {/* Header */}
           <motion.header
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="flex items-start justify-between gap-3 mb-5"
+            className="mb-2"
           >
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl md:text-[28px] font-serif font-semibold text-foreground leading-tight">
-                  Patterns & Insights
-                </h1>
-                <StatusPill signalCount={signalCount} />
-              </div>
-              <p className="text-sm text-muted-foreground/70">
-                Small patterns, over time. Nothing rushed.
-              </p>
-              <p className="text-[11px] text-muted-foreground/40 mt-1">
-                Updated from your recent reflections.
-              </p>
+            <div className="flex items-center gap-3 mb-1">
+              <h1 className="text-2xl md:text-[28px] font-serif font-semibold text-foreground leading-tight">
+                Patterns & Insights
+              </h1>
+              <StatusPill signalCount={signalCount} />
             </div>
+            <p className="text-sm text-muted-foreground/70">
+              MEND identifies emotional patterns from your reflections over time, gently surfacing what might otherwise go unnoticed.
+            </p>
           </motion.header>
-
-          {/* Check-in CTA card */}
-          <div className="mb-6">
-            <CheckInCard ctaText={checkInCTA} />
-          </div>
 
           {/* Main content */}
           {isLoading || snapshotLoading ? (
             <LoadingState />
           ) : !hasEnoughData ? (
-            <div className="space-y-10">
-              {/* Minimal brain for empty state */}
+            <div className="space-y-8 mt-6">
+              {/* Hero graph — empty state */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.6 }}
+                className="rounded-2xl bg-card/60 border border-border/30 p-4 md:p-6"
               >
-                <BrainVisualization
-                  baselineState="calm"
-                  highlightCluster={0}
-                  isEmpty
-                />
+                <div className="max-w-lg mx-auto">
+                  <BrainVisualization
+                    baselineState="calm"
+                    highlightCluster={0}
+                    isEmpty
+                  />
+                </div>
+                <p className="text-center text-[11px] text-muted-foreground/50 mt-3 tracking-wide">
+                  Your patterns will become clearer as you share more.
+                </p>
               </motion.div>
               <EmptyState heading={emptyHeading} body={emptyBody} ctaText={startCTA} />
             </div>
           ) : (
-            <div className="space-y-10">
-              {/* Brain Activity Visualization */}
+            <div className="space-y-8 mt-4">
+              {/* Hero Pattern Visualization */}
               {snapshotHasData && (
-                <>
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                  >
-                    <p className="text-[11px] text-muted-foreground/40 tracking-wide mb-4 text-center">
-                      brain activity
+                <motion.section
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  {/* Date range selector */}
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[11px] text-muted-foreground/50 tracking-wide uppercase">
+                      Emotional rhythm
                     </p>
+                    <DateRangeSelector value={dateRange} onChange={setDateRange} />
+                  </div>
+
+                  {/* Large hero graph */}
+                  <div className="rounded-2xl bg-card/60 border border-border/30 p-3 md:p-5">
                     <BrainVisualization
                       baselineState={snapshot!.baselineState}
                       highlightCluster={0}
                     />
-                  </motion.div>
+                    <p className="text-center text-[11px] text-muted-foreground/45 mt-2 tracking-wide">
+                      Reflecting your recent emotional rhythm
+                    </p>
 
-                  {/* 3 Insight Cards */}
-                  <InsightCards snapshot={snapshot!} />
-                </>
+                    {/* Legend */}
+                    <div className="flex items-center justify-center gap-5 mt-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-lilac-400" />
+                        <span className="text-[10px] text-muted-foreground/60">Emotional states</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-mint-400" />
+                        <span className="text-[10px] text-muted-foreground/60">Stabilizing moments</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full" style={{ background: "hsl(250 12% 68%)" }} />
+                        <span className="text-[10px] text-muted-foreground/60">Context</span>
+                      </div>
+                    </div>
+                  </div>
+                </motion.section>
               )}
 
-              {/* Existing pattern cards & mood timeline */}
-              <DynamicInsights 
-                patterns={data?.patterns || []} 
-                moodTimeline={data?.moodTimeline || []} 
-                signalCount={signalCount}
-                ctaText={checkInCTA}
-              />
+              {/* Insight Cards from snapshot */}
+              {snapshotHasData && (
+                <motion.section
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.15 }}
+                >
+                  <InsightCards snapshot={snapshot!} />
+                </motion.section>
+              )}
+
+              {/* What MEND is noticing */}
+              <motion.section
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.2 }}
+              >
+                <h2 className="text-lg font-serif font-semibold text-foreground mb-3">
+                  What MEND is noticing
+                </h2>
+                <DynamicInsights 
+                  patterns={data?.patterns || []} 
+                  moodTimeline={data?.moodTimeline || []} 
+                  signalCount={signalCount}
+                  ctaText={checkInCTA}
+                />
+              </motion.section>
+
+              {/* Check-in CTA */}
+              <div>
+                <CheckInCard ctaText={checkInCTA} />
+              </div>
             </div>
           )}
         </div>
