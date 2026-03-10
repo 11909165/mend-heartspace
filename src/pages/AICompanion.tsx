@@ -324,6 +324,8 @@ export default function AICompanion() {
                 user_id: user!.id,
                 message_id: userMsgData.id,
                 content: trimmedContent,
+                source_type: "companion_chat",
+                source_id: userMsgData.id,
               },
             });
           } catch (signalError) {

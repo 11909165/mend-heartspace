@@ -14,6 +14,7 @@ import { InsightCards } from "@/components/patterns/InsightCards";
 import { DateRangeSelector, type DateRange } from "@/components/patterns/DateRangeSelector";
 import { computePatternSnapshot, clearSnapshotCache, type PatternSnapshot } from "@/lib/patternSnapshot";
 import { useAuth } from "@/hooks/useAuth";
+import { useUnifiedSignals } from "@/hooks/useUnifiedSignals";
 
 const patternIcons: Record<string, typeof Heart> = {
   emotion: Heart,
@@ -230,7 +231,9 @@ export default function PatternsInsights() {
   const [dateRange, setDateRangeRaw] = useState<DateRange>("30");
   const setDateRange = (v: DateRange) => { clearSnapshotCache(); setDateRangeRaw(v); };
 
-  const signalCount = data?.signals?.length ?? 0;
+  // Unified signal graph data
+  const { data: signalGraph, isLoading: graphLoading } = useUnifiedSignals(dateRange);
+  const signalCount = signalGraph?.signalCount ?? data?.signals?.length ?? 0;
   const hasEnoughData = signalCount >= 3;
 
   useEffect(() => {
@@ -272,7 +275,7 @@ export default function PatternsInsights() {
           </motion.header>
 
           {/* ── Content ────────────────────────────── */}
-          {isLoading || snapshotLoading ? (
+          {isLoading || snapshotLoading || graphLoading ? (
             <LoadingState />
           ) : !hasEnoughData ? (
             <div className="space-y-10 mt-2">
@@ -322,6 +325,8 @@ export default function PatternsInsights() {
                     <BrainVisualization
                       baselineState={snapshot!.baselineState}
                       highlightCluster={0}
+                      graphNodes={signalGraph?.nodes}
+                      graphEdges={signalGraph?.edges}
                     />
                     <GraphLegend />
                     <p className="text-center text-[11px] text-muted-foreground/40 mt-3 tracking-wide">

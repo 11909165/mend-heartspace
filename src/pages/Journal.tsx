@@ -11,6 +11,7 @@ import {
 } from "@/lib/journalGuardrails";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { extractSignal } from "@/lib/extractSignal";
 import { JournalEntryTile } from "@/components/journal/JournalEntryTile";
 import { JournalEntryModal } from "@/components/journal/JournalEntryModal";
 
@@ -97,11 +98,21 @@ export default function Journal() {
     }
     // Save entry
     if (user) {
-      await supabase.from("journal_entries").insert({
+      const { data: entryData } = await supabase.from("journal_entries").insert({
         user_id: user.id,
         content: content.trim(),
         prompt: selectedPrompt,
-      });
+      }).select("id").single();
+
+      // Background signal extraction
+      if (entryData) {
+        extractSignal({
+          userId: user.id,
+          content: content.trim(),
+          sourceType: "journal_entry",
+          sourceId: entryData.id,
+        });
+      }
     }
     // Show acknowledgment, then reset
     setShowAcknowledgment(true);

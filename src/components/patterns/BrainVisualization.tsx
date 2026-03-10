@@ -1,20 +1,9 @@
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import type { BaselineState } from "@/lib/patternSnapshot";
+import type { GraphNode, GraphEdge } from "@/hooks/useUnifiedSignals";
 
-interface Node {
-  id: number;
-  x: number;
-  y: number;
-  cluster: number;
-  size: number;
-  label: string;
-}
-
-interface Edge {
-  from: number;
-  to: number;
-}
+/* ── Layout helpers ─────────────────────────────── */
 
 function seededRandom(seed: number) {
   let s = seed;
@@ -24,65 +13,90 @@ function seededRandom(seed: number) {
   };
 }
 
-// Theme labels per cluster
-const clusterLabels: string[][] = [
-  // Cluster 0 — emotional states (lavender)
-  ["stress", "tension", "overthinking", "unease", "heaviness", "worry", "frustration", "restlessness"],
-  // Cluster 1 — stabilizing moments (mint)
-  ["relief", "quiet time", "calm", "gratitude", "ease", "rest", "lightness", "peace"],
-  // Cluster 2 — context signals (gray)
-  ["work", "relationships", "routine", "family", "change", "the future", "health", "self"],
+// Cluster visual centers
+const centers = [
+  { x: 24, y: 32 },  // emotional states (lavender)
+  { x: 76, y: 28 },  // stabilizers (mint)
+  { x: 50, y: 72 },  // context/themes (gray)
 ];
 
-function generateGraph(nodeCount: number): { nodes: Node[]; edges: Edge[] } {
+interface LayoutNode {
+  id: string;
+  x: number;
+  y: number;
+  cluster: number;
+  size: number;
+  label: string;
+}
+
+interface LayoutEdge {
+  from: string;
+  to: string;
+  strength: number;
+}
+
+function layoutRealNodes(graphNodes: GraphNode[], graphEdges: GraphEdge[]): { nodes: LayoutNode[]; edges: LayoutEdge[] } {
   const rand = seededRandom(42);
-  const nodes: Node[] = [];
+  const nodes: LayoutNode[] = [];
 
-  // 3 well-separated cluster centers for clear visual grouping
-  const centers = [
-    { x: 24, y: 32 },  // top-left: emotional states
-    { x: 76, y: 28 },  // top-right: stabilizing moments
-    { x: 50, y: 72 },  // bottom-center: contextual signals
-  ];
-
-  for (let i = 0; i < nodeCount; i++) {
-    const cluster = i % 3;
-    const cx = centers[cluster].x;
-    const cy = centers[cluster].y;
-    const spread = 18;
-    const sizeRoll = rand();
-    const size = sizeRoll > 0.82 ? 1.25 + rand() * 0.2 : sizeRoll > 0.35 ? 0.85 + rand() * 0.25 : 0.5 + rand() * 0.25;
-    const labels = clusterLabels[cluster];
-    const label = labels[Math.floor(rand() * labels.length)];
+  for (let i = 0; i < graphNodes.length; i++) {
+    const gn = graphNodes[i];
+    const cx = centers[gn.cluster].x;
+    const cy = centers[gn.cluster].y;
+    const spread = 16;
+    const size = 0.5 + gn.weight * 1.0; // weight-driven size
     nodes.push({
-      id: i,
+      id: gn.id,
       x: cx + (rand() - 0.5) * spread * 2,
       y: cy + (rand() - 0.5) * spread * 1.6,
-      cluster,
+      cluster: gn.cluster,
       size,
-      label,
+      label: gn.label,
     });
   }
 
-  // Connect nearby nodes within same cluster preferentially
-  const edges: Edge[] = [];
+  return { nodes, edges: graphEdges.map(e => ({ from: e.from, to: e.to, strength: e.strength })) };
+}
+
+function generateEmptyGraph(count: number): { nodes: LayoutNode[]; edges: LayoutEdge[] } {
+  const rand = seededRandom(42);
+  const nodes: LayoutNode[] = [];
+  const placeholders = [
+    ["...", "...", "...", "..."],
+    ["...", "...", "..."],
+    ["...", "...", "...", "..."],
+  ];
+
+  for (let i = 0; i < count; i++) {
+    const cluster = i % 3;
+    const cx = centers[cluster].x;
+    const cy = centers[cluster].y;
+    const labels = placeholders[cluster];
+    nodes.push({
+      id: `empty-${i}`,
+      x: cx + (rand() - 0.5) * 32,
+      y: cy + (rand() - 0.5) * 25,
+      cluster,
+      size: 0.5 + rand() * 0.3,
+      label: labels[Math.floor(rand() * labels.length)],
+    });
+  }
+
+  const edges: LayoutEdge[] = [];
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
       const dx = nodes[i].x - nodes[j].x;
       const dy = nodes[i].y - nodes[j].y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const sameCluster = nodes[i].cluster === nodes[j].cluster;
-      // Same-cluster connections more likely, cross-cluster rare
-      if (sameCluster && dist < 16 && rand() > 0.4) {
-        edges.push({ from: i, to: j });
-      } else if (!sameCluster && dist < 22 && rand() > 0.88) {
-        edges.push({ from: i, to: j });
+      if (nodes[i].cluster === nodes[j].cluster && dist < 16 && rand() > 0.5) {
+        edges.push({ from: nodes[i].id, to: nodes[j].id, strength: 1 });
       }
     }
   }
-
   return { nodes, edges };
 }
+
+/* ── Pulse config ───────────────────────────────── */
 
 const pulseConfig: Record<BaselineState, { duration: number; ease: string }> = {
   calm: { duration: 5, ease: "easeInOut" },
@@ -91,11 +105,10 @@ const pulseConfig: Record<BaselineState, { duration: number; ease: string }> = {
   high: { duration: 1.8, ease: "easeInOut" },
 };
 
-// Cluster colors — MEND palette
 const clusterColors = {
   node: [
     "hsl(270 45% 72%)",  // lavender — emotional states
-    "hsl(165 35% 70%)",  // mint — stabilizing moments
+    "hsl(165 35% 70%)",  // mint — stabilizers
     "hsl(250 12% 68%)",  // neutral gray — context
   ],
   nodeEmpty: [
@@ -116,28 +129,35 @@ const clusterColors = {
   edgeCross: "hsl(250 10% 86%)",
 };
 
+/* ── Component ──────────────────────────────────── */
+
 interface BrainVisualizationProps {
   baselineState: BaselineState;
-  highlightCluster: number;
+  highlightCluster?: number;
   isEmpty?: boolean;
+  graphNodes?: GraphNode[];
+  graphEdges?: GraphEdge[];
 }
 
 export function BrainVisualization({
   baselineState,
-  highlightCluster,
+  highlightCluster = 0,
   isEmpty = false,
+  graphNodes,
+  graphEdges,
 }: BrainVisualizationProps) {
-  const nodeCount = isEmpty ? 15 : 48;
-  const { nodes, edges } = useMemo(() => generateGraph(nodeCount), [nodeCount]);
-  const pulse = pulseConfig[baselineState];
-  const [hoveredNode, setHoveredNode] = useState<number | null>(null);
+  const hasRealData = graphNodes && graphNodes.length > 0 && !isEmpty;
 
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    if (baselineState !== "fluctuating") return;
-    const id = setInterval(() => setTick((t) => t + 1), 2200);
-    return () => clearInterval(id);
-  }, [baselineState]);
+  const { nodes, edges } = useMemo(() => {
+    if (hasRealData) return layoutRealNodes(graphNodes!, graphEdges || []);
+    return generateEmptyGraph(isEmpty ? 15 : 24);
+  }, [hasRealData, graphNodes, graphEdges, isEmpty]);
+
+  const pulse = pulseConfig[baselineState];
+  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+
+  // Build lookup for edges
+  const nodeMap = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
 
   return (
     <svg
@@ -148,15 +168,8 @@ export function BrainVisualization({
       {/* Subtle grid texture */}
       <defs>
         <pattern id="pattern-grid" width="4" height="4" patternUnits="userSpaceOnUse">
-          <path
-            d="M 4 0 L 0 0 0 4"
-            fill="none"
-            stroke="hsl(250 15% 82%)"
-            strokeWidth="0.06"
-            opacity="0.35"
-          />
+          <path d="M 4 0 L 0 0 0 4" fill="none" stroke="hsl(250 15% 82%)" strokeWidth="0.06" opacity="0.35" />
         </pattern>
-        {/* Soft glow filters per cluster */}
         <filter id="glow-0" x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur in="SourceGraphic" stdDeviation="1.2" />
         </filter>
@@ -171,39 +184,38 @@ export function BrainVisualization({
 
       {/* Edges */}
       {edges.map((e, i) => {
-        const a = nodes[e.from];
-        const b = nodes[e.to];
+        const a = nodeMap.get(e.from);
+        const b = nodeMap.get(e.to);
+        if (!a || !b) return null;
         const sameCluster = a.cluster === b.cluster;
         const edgeColor = isEmpty
           ? "hsl(250 8% 86%)"
           : sameCluster
           ? clusterColors.edge[a.cluster]
           : clusterColors.edgeCross;
+        const strokeW = sameCluster
+          ? Math.min(0.14 + (e.strength || 0) * 0.03, 0.35)
+          : 0.08;
         return (
           <line
             key={`e-${i}`}
-            x1={a.x}
-            y1={a.y}
-            x2={b.x}
-            y2={b.y}
+            x1={a.x} y1={a.y} x2={b.x} y2={b.y}
             stroke={edgeColor}
-            strokeWidth={sameCluster ? 0.14 : 0.08}
+            strokeWidth={strokeW}
             opacity={isEmpty ? 0.18 : sameCluster ? 0.25 : 0.12}
           />
         );
       })}
 
-      {/* Ambient glow halos for active nodes */}
+      {/* Ambient glow halos */}
       {!isEmpty &&
         nodes.map((node) => {
           const isHighlight = node.cluster === highlightCluster;
-          if (!isHighlight && node.size < 1.0) return null;
+          if (!isHighlight && node.size < 0.8) return null;
           return (
             <motion.circle
               key={`glow-${node.id}`}
-              cx={node.x}
-              cy={node.y}
-              r={node.size * 3}
+              cx={node.x} cy={node.y} r={node.size * 3}
               fill={clusterColors.glow[node.cluster]}
               filter={`url(#glow-${node.cluster})`}
               animate={{ opacity: [0, isHighlight ? 0.14 : 0.08, 0] }}
@@ -211,25 +223,20 @@ export function BrainVisualization({
                 duration: pulse.duration * 1.4,
                 ease: "easeInOut",
                 repeat: Infinity,
-                delay: node.id * 0.12,
+                delay: nodes.indexOf(node) * 0.12,
               }}
             />
           );
         })}
 
       {/* Nodes */}
-      {nodes.map((node) => {
+      {nodes.map((node, idx) => {
         const isHighlight = node.cluster === highlightCluster && !isEmpty;
         const baseRadius = isEmpty
           ? node.size * 0.7
           : isHighlight
           ? node.size * 1.5
           : node.size * 1.05;
-
-        const delay =
-          baselineState === "fluctuating"
-            ? (node.id * 0.37 + tick * 0.1) % pulse.duration
-            : node.id * 0.1;
 
         const fillColor = isEmpty
           ? clusterColors.nodeEmpty[node.cluster]
@@ -238,15 +245,15 @@ export function BrainVisualization({
         return (
           <motion.circle
             key={node.id}
-            cx={node.x}
-            cy={node.y}
-            r={baseRadius}
+            cx={node.x} cy={node.y} r={baseRadius}
             fill={fillColor}
             style={{ cursor: isEmpty ? "default" : "pointer" }}
             onMouseEnter={() => !isEmpty && setHoveredNode(node.id)}
             onMouseLeave={() => setHoveredNode(null)}
             animate={{
-              r: hoveredNode === node.id ? [baseRadius * 1.4, baseRadius * 1.5, baseRadius * 1.4] : [baseRadius, baseRadius * 1.18, baseRadius],
+              r: hoveredNode === node.id
+                ? [baseRadius * 1.4, baseRadius * 1.5, baseRadius * 1.4]
+                : [baseRadius, baseRadius * 1.18, baseRadius],
               opacity: isEmpty
                 ? [0.22, 0.38, 0.22]
                 : hoveredNode === node.id
@@ -259,36 +266,30 @@ export function BrainVisualization({
               duration: hoveredNode === node.id ? 1.5 : pulse.duration,
               ease: pulse.ease as any,
               repeat: Infinity,
-              delay: hoveredNode === node.id ? 0 : delay,
+              delay: hoveredNode === node.id ? 0 : idx * 0.1,
             }}
           />
         );
       })}
 
-      {/* Tooltip for hovered node */}
+      {/* Tooltip */}
       {hoveredNode !== null && !isEmpty && (() => {
-        const node = nodes[hoveredNode];
+        const node = nodeMap.get(hoveredNode);
+        if (!node) return null;
         const labelWidth = node.label.length * 1.1 + 2;
         const tooltipY = node.y - node.size * 2 - 3;
         const clampedX = Math.max(labelWidth / 2 + 1, Math.min(99 - labelWidth / 2, node.x));
         return (
           <g>
             <rect
-              x={clampedX - labelWidth / 2}
-              y={tooltipY - 2}
-              width={labelWidth}
-              height={4}
-              rx={1}
-              fill="hsl(250 15% 20%)"
-              opacity={0.85}
+              x={clampedX - labelWidth / 2} y={tooltipY - 2}
+              width={labelWidth} height={4} rx={1}
+              fill="hsl(250 15% 20%)" opacity={0.85}
             />
             <text
-              x={clampedX}
-              y={tooltipY + 0.6}
-              textAnchor="middle"
-              fontSize="2.2"
-              fill="hsl(250 15% 92%)"
-              fontFamily="inherit"
+              x={clampedX} y={tooltipY + 0.6}
+              textAnchor="middle" fontSize="2.2"
+              fill="hsl(250 15% 92%)" fontFamily="inherit"
               style={{ pointerEvents: "none" }}
             >
               {node.label}

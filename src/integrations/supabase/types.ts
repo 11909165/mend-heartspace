@@ -200,34 +200,52 @@ export type Database = {
         Row: {
           context: string
           created_at: string | null
+          extracted_at: string | null
           id: string
           intensity: string
           message_id: string | null
           primary_emotion: string
           secondary_emotion: string | null
+          source_id: string | null
+          source_type: string
+          stabilizer: string | null
+          theme: string | null
           time_bucket: string
+          trigger_signal: string | null
           user_id: string
         }
         Insert: {
           context: string
           created_at?: string | null
+          extracted_at?: string | null
           id?: string
           intensity: string
           message_id?: string | null
           primary_emotion: string
           secondary_emotion?: string | null
+          source_id?: string | null
+          source_type?: string
+          stabilizer?: string | null
+          theme?: string | null
           time_bucket: string
+          trigger_signal?: string | null
           user_id: string
         }
         Update: {
           context?: string
           created_at?: string | null
+          extracted_at?: string | null
           id?: string
           intensity?: string
           message_id?: string | null
           primary_emotion?: string
           secondary_emotion?: string | null
+          source_id?: string | null
+          source_type?: string
+          stabilizer?: string | null
+          theme?: string | null
           time_bucket?: string
+          trigger_signal?: string | null
           user_id?: string
         }
         Relationships: [
