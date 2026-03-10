@@ -137,13 +137,29 @@ const clusterColors = {
   edgeCross: "hsl(250 10% 86%)",
 };
 
-/* Tooltip palette – deep lavender gray */
+/* Tooltip & label palette – deep lavender gray */
 const tooltipColors = {
-  bg: "#2F2B36",
-  textPrimary: "#F3F1F7",
-  textSecondary: "#CFC8D9",
-  textMuted: "#A9A0B8",
+  bg: "hsl(270 14% 18%)",       /* #2F2B36 equivalent */
+  textPrimary: "hsl(265 30% 96%)",   /* #F3F1F7 */
+  textSecondary: "hsl(268 18% 80%)", /* #CFC8D9 */
+  textMuted: "hsl(268 14% 67%)",     /* #A9A0B8 */
 };
+
+/* Per-cluster label colors – soft lavender neutrals */
+const labelColors = {
+  active: [
+    "hsl(270 30% 62%)",   /* Emotional – muted lavender */
+    "hsl(162 30% 56%)",   /* Stabilizing – gentle mint */
+    "hsl(255 12% 58%)",   /* Context – soft gray-lavender */
+  ],
+  dimmed: [
+    "hsl(270 16% 72%)",
+    "hsl(162 16% 72%)",
+    "hsl(255 8% 72%)",
+  ],
+};
+
+const FONT_STACK = "'DM Sans', 'Inter', system-ui, sans-serif";
 
 const clusterNames = ["Emotional state", "Stabilizing moment", "Context signal"];
 
