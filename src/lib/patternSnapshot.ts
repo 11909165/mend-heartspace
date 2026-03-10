@@ -90,25 +90,32 @@ export function clearSnapshotCache() {
   cachedUserId = null;
 }
 
-export async function computePatternSnapshot(userId: string): Promise<PatternSnapshot> {
-  // Return cached if same user and computed within last 5 minutes
+export type DateRangeValue = "7" | "30" | "all";
+
+export async function computePatternSnapshot(userId: string, range: DateRangeValue = "30"): Promise<PatternSnapshot> {
+  // Return cached if same user, same range, and computed within last 5 minutes
+  const cacheKey = `${userId}_${range}`;
   if (
     cachedSnapshot &&
-    cachedUserId === userId &&
+    cachedUserId === cacheKey &&
     Date.now() - cachedSnapshot.computedAt < 5 * 60 * 1000
   ) {
     return cachedSnapshot;
   }
 
-  const fourteenDaysAgo = new Date();
-  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
-
-  const { data, error } = await supabase
+  let query = supabase
     .from("mend_signals")
     .select("intensity, context, created_at")
     .eq("user_id", userId)
-    .gte("created_at", fourteenDaysAgo.toISOString())
     .order("created_at", { ascending: false });
+
+  if (range !== "all") {
+    const daysAgo = new Date();
+    daysAgo.setDate(daysAgo.getDate() - Number(range));
+    query = query.gte("created_at", daysAgo.toISOString());
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
 
