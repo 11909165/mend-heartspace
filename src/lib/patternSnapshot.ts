@@ -162,7 +162,7 @@ export async function computePatternSnapshot(userId: string, range: DateRangeVal
   };
 
   cachedSnapshot = snapshot;
-  cachedUserId = userId;
+  cachedUserId = `${userId}_${range}`;
 
   return snapshot;
 }
