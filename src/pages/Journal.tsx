@@ -11,6 +11,7 @@ import {
 } from "@/lib/journalGuardrails";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { extractSignal } from "@/lib/extractSignal";
 import { JournalEntryTile } from "@/components/journal/JournalEntryTile";
 import { JournalEntryModal } from "@/components/journal/JournalEntryModal";
 
