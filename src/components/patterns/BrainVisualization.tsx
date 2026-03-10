@@ -246,20 +246,20 @@ export function BrainVisualization({
             onMouseEnter={() => !isEmpty && setHoveredNode(node.id)}
             onMouseLeave={() => setHoveredNode(null)}
             animate={{
-              r: isHovered ? [baseRadius * 1.4, baseRadius * 1.5, baseRadius * 1.4] : [baseRadius, baseRadius * 1.18, baseRadius],
+              r: hoveredNode === node.id ? [baseRadius * 1.4, baseRadius * 1.5, baseRadius * 1.4] : [baseRadius, baseRadius * 1.18, baseRadius],
               opacity: isEmpty
                 ? [0.22, 0.38, 0.22]
-                : isHovered
+                : hoveredNode === node.id
                 ? [0.85, 1, 0.85]
                 : isHighlight
                 ? [0.6, 0.88, 0.6]
                 : [0.32, 0.52, 0.32],
             }}
             transition={{
-              duration: isHovered ? 1.5 : pulse.duration,
+              duration: hoveredNode === node.id ? 1.5 : pulse.duration,
               ease: pulse.ease as any,
               repeat: Infinity,
-              delay: isHovered ? 0 : delay,
+              delay: hoveredNode === node.id ? 0 : delay,
             }}
           />
         );
