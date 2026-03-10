@@ -12,7 +12,7 @@ import { MoodTimeline } from "@/components/patterns/MoodTimeline";
 import { BrainVisualization } from "@/components/patterns/BrainVisualization";
 import { InsightCards } from "@/components/patterns/InsightCards";
 import { DateRangeSelector, type DateRange } from "@/components/patterns/DateRangeSelector";
-import { computePatternSnapshot, type PatternSnapshot } from "@/lib/patternSnapshot";
+import { computePatternSnapshot, clearSnapshotCache, type PatternSnapshot } from "@/lib/patternSnapshot";
 import { useAuth } from "@/hooks/useAuth";
 
 const patternIcons: Record<string, typeof Heart> = {
@@ -227,7 +227,8 @@ export default function PatternsInsights() {
   const phase = useUserPhase(data?.signals);
   const [snapshot, setSnapshot] = useState<PatternSnapshot | null>(null);
   const [snapshotLoading, setSnapshotLoading] = useState(false);
-  const [dateRange, setDateRange] = useState<DateRange>("30");
+  const [dateRange, setDateRangeRaw] = useState<DateRange>("30");
+  const setDateRange = (v: DateRange) => { clearSnapshotCache(); setDateRangeRaw(v); };
 
   const signalCount = data?.signals?.length ?? 0;
   const hasEnoughData = signalCount >= 3;
@@ -235,11 +236,11 @@ export default function PatternsInsights() {
   useEffect(() => {
     if (!user?.id) return;
     setSnapshotLoading(true);
-    computePatternSnapshot(user.id)
+    computePatternSnapshot(user.id, dateRange)
       .then(setSnapshot)
       .catch(() => {})
       .finally(() => setSnapshotLoading(false));
-  }, [user?.id, data?.signals]);
+  }, [user?.id, data?.signals, dateRange]);
 
   const emptyHeading = getPatternsEmptyHeading(phase);
   const emptyBody = getPatternsEmptyBody(phase);
