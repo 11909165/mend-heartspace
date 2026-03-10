@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { useMemo, useState, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import type { BaselineState } from "@/lib/patternSnapshot";
 import type { GraphNode, GraphEdge } from "@/hooks/useUnifiedSignals";
 
