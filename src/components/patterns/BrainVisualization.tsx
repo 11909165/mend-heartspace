@@ -238,7 +238,6 @@ export function BrainVisualization({
           ? clusterColors.nodeEmpty[node.cluster]
           : clusterColors.node[node.cluster];
 
-        const isHovered = hoveredNode === node.id;
         return (
           <motion.circle
             key={node.id}
@@ -300,7 +299,6 @@ export function BrainVisualization({
           </g>
         );
       })()}
-      })}
     </svg>
   );
 }
