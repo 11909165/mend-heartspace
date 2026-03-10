@@ -319,11 +319,14 @@ export function BrainVisualization({
 
   return (
     <div ref={containerRef} className="relative">
-      <svg
+      <motion.svg
         viewBox="0 0 100 100"
         className="w-full h-full"
         aria-label="Emotional pattern visualization"
         onClick={handleBgClick}
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
       >
         <defs>
           <pattern id="pattern-grid" width="4" height="4" patternUnits="userSpaceOnUse">
