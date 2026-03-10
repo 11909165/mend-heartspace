@@ -578,7 +578,7 @@ export function BrainVisualization({
             </g>
           );
         })()}
-      </svg>
+      </motion.svg>
 
       {/* ── Floating insight panel ─────────────────── */}
       <AnimatePresence>
