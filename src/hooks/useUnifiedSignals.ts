@@ -63,54 +63,58 @@ function getEmotionNodeLabel(emotion: string): string {
 function buildGraph(signals: EnrichedSignal[]): SignalGraph {
   if (signals.length < 1) return { nodes: [], edges: [], signalCount: 0 };
 
-  // Count frequencies for node weight
   const emotionFreq = new Map<string, number>();
   const stabilizerFreq = new Map<string, number>();
   const contextFreq = new Map<string, number>();
-  const coOccurrence = new Map<string, number>(); // "nodeA||nodeB" -> count
+  const coOccurrence = new Map<string, number>();
 
   for (const s of signals) {
-    const emotionKey = getEmotionNodeLabel(s.primary_emotion);
-    emotionFreq.set(emotionKey, (emotionFreq.get(emotionKey) || 0) + 1);
+    // Cluster 0 — Emotional states: only from companion_chat
+    if (s.source_type === "companion_chat") {
+      const emotionKey = getEmotionNodeLabel(s.primary_emotion);
+      const intensityMult = s.intensity === "high" ? 1.5 : s.intensity === "low" ? 0.7 : 1;
+      emotionFreq.set(emotionKey, (emotionFreq.get(emotionKey) || 0) + 1 * intensityMult);
 
-    // Intensity multiplier
-    const intensityMult = s.intensity === "high" ? 1.5 : s.intensity === "low" ? 0.7 : 1;
-    emotionFreq.set(emotionKey, (emotionFreq.get(emotionKey) || 1) * intensityMult);
+      if (s.secondary_emotion) {
+        const secKey = getEmotionNodeLabel(s.secondary_emotion);
+        emotionFreq.set(secKey, (emotionFreq.get(secKey) || 0) + 0.5);
+        addCoOccurrence(coOccurrence, `e:${emotionKey}`, `e:${secKey}`);
+      }
+    }
 
-    // Context
+    // Cluster 1 — Stabilizing moments: only from journal_entry
+    if (s.source_type === "journal_entry") {
+      if (s.stabilizer) {
+        const st = s.stabilizer.toLowerCase().trim();
+        stabilizerFreq.set(st, (stabilizerFreq.get(st) || 0) + 1);
+      }
+      // Journal emotions also feed as stabilizing reflections
+      const journalEmotion = getEmotionNodeLabel(s.primary_emotion);
+      const isGrounding = ["calm", "ease", "relief", "gratitude", "hope", "lightness", "motivation"].includes(journalEmotion);
+      if (isGrounding) {
+        stabilizerFreq.set(journalEmotion, (stabilizerFreq.get(journalEmotion) || 0) + 1);
+      }
+    }
+
+    // Cluster 2 — Context signals: from ALL sources
     const ctx = s.context?.toLowerCase().trim();
     if (ctx && ctx !== "other") {
       contextFreq.set(ctx, (contextFreq.get(ctx) || 0) + 1);
-      addCoOccurrence(coOccurrence, `e:${emotionKey}`, `c:${ctx}`);
     }
-
-    // Theme (richer than context)
     if (s.theme) {
       const t = s.theme.toLowerCase().trim();
       contextFreq.set(t, (contextFreq.get(t) || 0) + 1);
-      addCoOccurrence(coOccurrence, `e:${emotionKey}`, `c:${t}`);
     }
-
-    // Trigger
     if (s.trigger_signal) {
       const tr = s.trigger_signal.toLowerCase().trim();
       contextFreq.set(tr, (contextFreq.get(tr) || 0) + 1);
-      addCoOccurrence(coOccurrence, `e:${emotionKey}`, `c:${tr}`);
     }
 
-    // Stabilizer
-    if (s.stabilizer) {
-      const st = s.stabilizer.toLowerCase().trim();
-      stabilizerFreq.set(st, (stabilizerFreq.get(st) || 0) + 1);
-      addCoOccurrence(coOccurrence, `e:${emotionKey}`, `s:${st}`);
-    }
-
-    // Secondary emotion co-occurrence
-    if (s.secondary_emotion) {
-      const secKey = getEmotionNodeLabel(s.secondary_emotion);
-      emotionFreq.set(secKey, (emotionFreq.get(secKey) || 0) + 0.5);
-      addCoOccurrence(coOccurrence, `e:${emotionKey}`, `e:${secKey}`);
-    }
+    // Cross-cluster co-occurrences for edges
+    const emotionKey = getEmotionNodeLabel(s.primary_emotion);
+    if (ctx && ctx !== "other") addCoOccurrence(coOccurrence, `e:${emotionKey}`, `c:${ctx}`);
+    if (s.theme) addCoOccurrence(coOccurrence, `e:${emotionKey}`, `c:${s.theme.toLowerCase().trim()}`);
+    if (s.stabilizer) addCoOccurrence(coOccurrence, `e:${emotionKey}`, `s:${s.stabilizer.toLowerCase().trim()}`);
   }
 
   // Build nodes with normalized weights

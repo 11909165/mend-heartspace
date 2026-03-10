@@ -202,19 +202,23 @@ function DynamicInsights({ patterns, moodTimeline, signalCount, ctaText }: { pat
 /* ── Graph legend ────────────────────────────────── */
 function GraphLegend() {
   const items = [
-    { color: "bg-lilac-400", label: "Emotional states" },
-    { color: "bg-mint-400", label: "Stabilizing moments" },
-    { colorStyle: "hsl(250 12% 68%)", label: "Context signals" },
+    { color: "bg-lilac-400", label: "Emotional states", desc: "From companion conversations" },
+    { color: "bg-mint-400", label: "Stabilizing moments", desc: "From journal entries" },
+    { colorStyle: "hsl(250 12% 68%)", label: "Context signals", desc: "From chats, journals & circles" },
   ];
   return (
     <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-4">
       {items.map((item) => (
-        <div key={item.label} className="flex items-center gap-2">
+        <div key={item.label} className="flex items-center gap-2 group relative">
           <span
             className={`w-2.5 h-2.5 rounded-full shrink-0 ${item.color ?? ""}`}
             style={item.colorStyle ? { background: item.colorStyle } : undefined}
           />
           <span className="text-[11px] text-muted-foreground/70 leading-none">{item.label}</span>
+          {/* Hover tooltip */}
+          <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap bg-foreground/90 text-background text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            {item.desc}
+          </span>
         </div>
       ))}
     </div>
