@@ -325,6 +325,8 @@ export default function PatternsInsights() {
                     <BrainVisualization
                       baselineState={snapshot!.baselineState}
                       highlightCluster={0}
+                      graphNodes={signalGraph?.nodes}
+                      graphEdges={signalGraph?.edges}
                     />
                     <GraphLegend />
                     <p className="text-center text-[11px] text-muted-foreground/40 mt-3 tracking-wide">
