@@ -8,54 +8,22 @@ const corsHeaders = {
 };
 
 const ALLOWED_EMOTIONS = [
-  "calm",
-  "content",
-  "hopeful",
-  "grateful",
-  "joyful",
-  "excited",
-  "tired",
-  "overwhelmed",
-  "stressed",
-  "uneasy",
-  "anxious_like",
-  "sad",
-  "heavy",
-  "lonely",
-  "frustrated",
-  "angry",
-  "guilty",
-  "ashamed",
-  "numb",
-  "confused",
-  "insecure",
-  "hurt",
-  "motivated",
-  "relieved",
-  "distressed",
+  "calm", "content", "hopeful", "grateful", "joyful", "excited",
+  "tired", "overwhelmed", "stressed", "uneasy", "anxious_like",
+  "sad", "heavy", "lonely", "frustrated", "angry", "guilty",
+  "ashamed", "numb", "confused", "insecure", "hurt",
+  "motivated", "relieved", "distressed",
 ] as const;
 
 const ALLOWED_CONTEXTS = [
-  "work",
-  "relationships",
-  "family",
-  "friends",
-  "self",
-  "health",
-  "money",
-  "future",
-  "identity",
-  "study",
-  "social",
-  "routine",
-  "sleep",
-  "body",
-  "safety",
-  "other",
+  "work", "relationships", "family", "friends", "self", "health",
+  "money", "future", "identity", "study", "social", "routine",
+  "sleep", "body", "safety", "other",
 ] as const;
 
 const ALLOWED_INTENSITIES = ["low", "medium", "high"] as const;
 const ALLOWED_TIME_BUCKETS = ["morning", "afternoon", "evening", "night"] as const;
+const ALLOWED_SOURCE_TYPES = ["companion_chat", "journal_entry", "support_post"] as const;
 
 const SYSTEM_PROMPT = `You are an emotion-signal extraction component for MEND, a wellness companion app.
 
@@ -67,35 +35,32 @@ STRICT RULES:
 3. If the message contains safety concerns (self-harm, suicidal ideation, crisis), set primary_emotion to "distressed" and context to "safety".
 4. Output ONLY valid JSON. No markdown, no code blocks, no explanatory text.
 5. Be empathetic but objective in extraction.
-6. The safe_summary must be a brief, non-identifying phrase (max 8 words) that captures the emotional essence without personal details.
-7. Confidence should reflect how clearly the emotion was expressed (0.0 to 1.0).
+6. The theme should capture the dominant life-area or recurring subject (e.g. "career pressure", "missing someone", "self-doubt").
+7. The trigger should identify what specifically prompted the emotion (e.g. "argument with partner", "exam results", "sleepless night"). Use null if unclear.
+8. The stabilizer should identify any coping, grounding, or recovery signal present (e.g. "journaling", "talking to a friend", "going for a walk"). Use null if none present.
+9. Confidence should reflect how clearly the emotion was expressed (0.0 to 1.0).
 
 Respond with exactly the JSON structure requested, nothing else.`;
 
 function getISTTimeInfo(): { localTime: string; suggestedBucket: string } {
   const now = new Date();
-  // IST is UTC+5:30
   const istOffset = 5.5 * 60 * 60 * 1000;
   const istDate = new Date(now.getTime() + istOffset);
   const hours = istDate.getUTCHours();
 
   let suggestedBucket: string;
-  if (hours >= 5 && hours < 12) {
-    suggestedBucket = "morning";
-  } else if (hours >= 12 && hours < 17) {
-    suggestedBucket = "afternoon";
-  } else if (hours >= 17 && hours < 21) {
-    suggestedBucket = "evening";
-  } else {
-    suggestedBucket = "night";
-  }
+  if (hours >= 5 && hours < 12) suggestedBucket = "morning";
+  else if (hours >= 12 && hours < 17) suggestedBucket = "afternoon";
+  else if (hours >= 17 && hours < 21) suggestedBucket = "evening";
+  else suggestedBucket = "night";
 
-  const localTime = istDate.toISOString().slice(11, 16); // HH:MM format
+  const localTime = istDate.toISOString().slice(11, 16);
   return { localTime, suggestedBucket };
 }
 
-function buildUserPrompt(content: string, localTime: string, suggestedBucket: string): string {
-  return `Analyze the following message and extract emotional signals.
+function buildUserPrompt(content: string, localTime: string, suggestedBucket: string, sourceType: string): string {
+  const sourceLabel = sourceType === "journal_entry" ? "journal entry" : sourceType === "support_post" ? "support community post" : "companion chat message";
+  return `Analyze the following ${sourceLabel} and extract emotional signals.
 
 MESSAGE:
 "${content}"
@@ -109,8 +74,10 @@ ALLOWED VALUES:
 - intensity (required): One of ${JSON.stringify(ALLOWED_INTENSITIES)}
 - context (required): One of ${JSON.stringify(ALLOWED_CONTEXTS)}
 - time_bucket (required): One of ${JSON.stringify(ALLOWED_TIME_BUCKETS)} (use suggested bucket if unclear)
+- theme (required): A brief phrase describing the dominant life-area or subject (max 4 words)
+- trigger (optional): What specifically prompted the emotion (max 6 words), or null
+- stabilizer (optional): Any coping/grounding/recovery signal present (max 4 words), or null
 - confidence (required): Number between 0.0 and 1.0
-- safe_summary (required): Brief non-identifying phrase (max 8 words)
 
 OUTPUT FORMAT (JSON only, no markdown):
 {
@@ -119,65 +86,68 @@ OUTPUT FORMAT (JSON only, no markdown):
   "intensity": "...",
   "context": "...",
   "time_bucket": "...",
-  "confidence": 0.0-1.0,
-  "safe_summary": "..."
+  "theme": "...",
+  "trigger": "..." or null,
+  "stabilizer": "..." or null,
+  "confidence": 0.0-1.0
 }`;
 }
 
-function validateAndNormalize(
-  signals: Record<string, unknown>,
-  fallbackBucket: string,
-): {
+interface ValidatedSignals {
   primary_emotion: string;
   secondary_emotion: string | null;
   intensity: string;
   context: string;
   time_bucket: string;
+  theme: string | null;
+  trigger_signal: string | null;
+  stabilizer: string | null;
   confidence: number;
-  safe_summary: string;
-} {
-  const primary = ALLOWED_EMOTIONS.includes(signals.primary_emotion as (typeof ALLOWED_EMOTIONS)[number])
+}
+
+function validateAndNormalize(signals: Record<string, unknown>, fallbackBucket: string): ValidatedSignals {
+  const primary = ALLOWED_EMOTIONS.includes(signals.primary_emotion as any)
     ? (signals.primary_emotion as string)
     : "confused";
 
   const secondary =
-    signals.secondary_emotion &&
-    ALLOWED_EMOTIONS.includes(signals.secondary_emotion as (typeof ALLOWED_EMOTIONS)[number])
+    signals.secondary_emotion && ALLOWED_EMOTIONS.includes(signals.secondary_emotion as any)
       ? (signals.secondary_emotion as string)
       : null;
 
-  const intensity = ALLOWED_INTENSITIES.includes(signals.intensity as (typeof ALLOWED_INTENSITIES)[number])
+  const intensity = ALLOWED_INTENSITIES.includes(signals.intensity as any)
     ? (signals.intensity as string)
     : "medium";
 
-  const context = ALLOWED_CONTEXTS.includes(signals.context as (typeof ALLOWED_CONTEXTS)[number])
+  const context = ALLOWED_CONTEXTS.includes(signals.context as any)
     ? (signals.context as string)
     : "other";
 
-  // Use fallback if time_bucket is invalid
-  const time_bucket = ALLOWED_TIME_BUCKETS.includes(signals.time_bucket as (typeof ALLOWED_TIME_BUCKETS)[number])
+  const time_bucket = ALLOWED_TIME_BUCKETS.includes(signals.time_bucket as any)
     ? (signals.time_bucket as string)
     : fallbackBucket;
+
+  const theme =
+    typeof signals.theme === "string" && signals.theme.length <= 40
+      ? signals.theme.toLowerCase().trim()
+      : null;
+
+  const trigger_signal =
+    typeof signals.trigger === "string" && signals.trigger.length <= 60
+      ? signals.trigger.toLowerCase().trim()
+      : null;
+
+  const stabilizer =
+    typeof signals.stabilizer === "string" && signals.stabilizer.length <= 40
+      ? signals.stabilizer.toLowerCase().trim()
+      : null;
 
   const confidence =
     typeof signals.confidence === "number" && signals.confidence >= 0 && signals.confidence <= 1
       ? signals.confidence
       : 0.5;
 
-  const safe_summary =
-    typeof signals.safe_summary === "string" && signals.safe_summary.length <= 60
-      ? signals.safe_summary
-      : "Emotional reflection shared";
-
-  return {
-    primary_emotion: primary,
-    secondary_emotion: secondary,
-    intensity,
-    context,
-    time_bucket,
-    confidence,
-    safe_summary,
-  };
+  return { primary_emotion: primary, secondary_emotion: secondary, intensity, context, time_bucket, theme, trigger_signal, stabilizer, confidence };
 }
 
 serve(async (req) => {
@@ -186,25 +156,26 @@ serve(async (req) => {
   }
 
   try {
-    const { user_id, message_id, content } = await req.json();
+    const body = await req.json();
+    const { user_id, content, source_type = "companion_chat", source_id, message_id } = body;
 
-    if (!user_id || !message_id || !content) {
-      return new Response(JSON.stringify({ error: "Missing required fields: user_id, message_id, content" }), {
+    if (!user_id || !content) {
+      return new Response(JSON.stringify({ error: "Missing required fields: user_id, content" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // Validate source_type
+    const validSourceType = ALLOWED_SOURCE_TYPES.includes(source_type) ? source_type : "companion_chat";
+    const resolvedSourceId = source_id || message_id || null;
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    // Compute IST time info
     const { localTime, suggestedBucket } = getISTTimeInfo();
-    const userPrompt = buildUserPrompt(content, localTime, suggestedBucket);
+    const userPrompt = buildUserPrompt(content, localTime, suggestedBucket, validSourceType);
 
-    // Call Lovable AI with structured prompts
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -232,13 +203,11 @@ serve(async (req) => {
     const aiData = await aiResponse.json();
     const signalText = aiData.choices?.[0]?.message?.content || "";
 
-    // Parse the JSON response
     let rawSignals: Record<string, unknown>;
     try {
-      // Clean up potential markdown code blocks
       const cleanedText = signalText.replace(/```json\n?|\n?```/g, "").trim();
       rawSignals = JSON.parse(cleanedText);
-    } catch (parseError) {
+    } catch {
       console.error("Failed to parse AI response:", signalText);
       return new Response(JSON.stringify({ error: "Failed to parse signal extraction" }), {
         status: 500,
@@ -246,10 +215,8 @@ serve(async (req) => {
       });
     }
 
-    // Validate and normalize with IST fallback
     const signals = validateAndNormalize(rawSignals, suggestedBucket);
 
-    // Insert the signal into the database
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -258,12 +225,18 @@ serve(async (req) => {
       .from("mend_signals")
       .insert({
         user_id,
-        message_id,
+        message_id: validSourceType === "companion_chat" ? (message_id || null) : null,
+        source_type: validSourceType,
+        source_id: resolvedSourceId,
         primary_emotion: signals.primary_emotion,
         secondary_emotion: signals.secondary_emotion,
         intensity: signals.intensity,
         context: signals.context,
         time_bucket: signals.time_bucket,
+        theme: signals.theme,
+        trigger_signal: signals.trigger_signal,
+        stabilizer: signals.stabilizer,
+        extracted_at: new Date().toISOString(),
       })
       .select()
       .single();
