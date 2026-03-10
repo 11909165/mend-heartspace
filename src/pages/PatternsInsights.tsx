@@ -227,7 +227,8 @@ export default function PatternsInsights() {
   const phase = useUserPhase(data?.signals);
   const [snapshot, setSnapshot] = useState<PatternSnapshot | null>(null);
   const [snapshotLoading, setSnapshotLoading] = useState(false);
-  const [dateRange, setDateRange] = useState<DateRange>("30");
+  const [dateRange, setDateRangeRaw] = useState<DateRange>("30");
+  const setDateRange = (v: DateRange) => { clearSnapshotCache(); setDateRangeRaw(v); };
 
   const signalCount = data?.signals?.length ?? 0;
   const hasEnoughData = signalCount >= 3;
