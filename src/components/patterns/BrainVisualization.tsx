@@ -8,6 +8,7 @@ interface Node {
   y: number;
   cluster: number;
   size: number;
+  label: string;
 }
 
 interface Edge {
@@ -22,6 +23,16 @@ function seededRandom(seed: number) {
     return (s - 1) / 2147483646;
   };
 }
+
+// Theme labels per cluster
+const clusterLabels: string[][] = [
+  // Cluster 0 — emotional states (lavender)
+  ["stress", "tension", "overthinking", "unease", "heaviness", "worry", "frustration", "restlessness"],
+  // Cluster 1 — stabilizing moments (mint)
+  ["relief", "quiet time", "calm", "gratitude", "ease", "rest", "lightness", "peace"],
+  // Cluster 2 — context signals (gray)
+  ["work", "relationships", "routine", "family", "change", "the future", "health", "self"],
+];
 
 function generateGraph(nodeCount: number): { nodes: Node[]; edges: Edge[] } {
   const rand = seededRandom(42);
@@ -38,16 +49,18 @@ function generateGraph(nodeCount: number): { nodes: Node[]; edges: Edge[] } {
     const cluster = i % 3;
     const cx = centers[cluster].x;
     const cy = centers[cluster].y;
-    // Tighter spread within clusters for cohesion, but enough variety
     const spread = 18;
     const sizeRoll = rand();
     const size = sizeRoll > 0.82 ? 1.25 + rand() * 0.2 : sizeRoll > 0.35 ? 0.85 + rand() * 0.25 : 0.5 + rand() * 0.25;
+    const labels = clusterLabels[cluster];
+    const label = labels[Math.floor(rand() * labels.length)];
     nodes.push({
       id: i,
       x: cx + (rand() - 0.5) * spread * 2,
       y: cy + (rand() - 0.5) * spread * 1.6,
       cluster,
       size,
+      label,
     });
   }
 
@@ -117,6 +130,7 @@ export function BrainVisualization({
   const nodeCount = isEmpty ? 15 : 48;
   const { nodes, edges } = useMemo(() => generateGraph(nodeCount), [nodeCount]);
   const pulse = pulseConfig[baselineState];
+  const [hoveredNode, setHoveredNode] = useState<number | null>(null);
 
   const [tick, setTick] = useState(0);
   useEffect(() => {
@@ -228,23 +242,60 @@ export function BrainVisualization({
             cy={node.y}
             r={baseRadius}
             fill={fillColor}
+            style={{ cursor: isEmpty ? "default" : "pointer" }}
+            onMouseEnter={() => !isEmpty && setHoveredNode(node.id)}
+            onMouseLeave={() => setHoveredNode(null)}
             animate={{
-              r: [baseRadius, baseRadius * 1.18, baseRadius],
+              r: hoveredNode === node.id ? [baseRadius * 1.4, baseRadius * 1.5, baseRadius * 1.4] : [baseRadius, baseRadius * 1.18, baseRadius],
               opacity: isEmpty
                 ? [0.22, 0.38, 0.22]
+                : hoveredNode === node.id
+                ? [0.85, 1, 0.85]
                 : isHighlight
                 ? [0.6, 0.88, 0.6]
                 : [0.32, 0.52, 0.32],
             }}
             transition={{
-              duration: pulse.duration,
+              duration: hoveredNode === node.id ? 1.5 : pulse.duration,
               ease: pulse.ease as any,
               repeat: Infinity,
-              delay,
+              delay: hoveredNode === node.id ? 0 : delay,
             }}
           />
         );
       })}
+
+      {/* Tooltip for hovered node */}
+      {hoveredNode !== null && !isEmpty && (() => {
+        const node = nodes[hoveredNode];
+        const labelWidth = node.label.length * 1.1 + 2;
+        const tooltipY = node.y - node.size * 2 - 3;
+        const clampedX = Math.max(labelWidth / 2 + 1, Math.min(99 - labelWidth / 2, node.x));
+        return (
+          <g>
+            <rect
+              x={clampedX - labelWidth / 2}
+              y={tooltipY - 2}
+              width={labelWidth}
+              height={4}
+              rx={1}
+              fill="hsl(250 15% 20%)"
+              opacity={0.85}
+            />
+            <text
+              x={clampedX}
+              y={tooltipY + 0.6}
+              textAnchor="middle"
+              fontSize="2.2"
+              fill="hsl(250 15% 92%)"
+              fontFamily="inherit"
+              style={{ pointerEvents: "none" }}
+            >
+              {node.label}
+            </text>
+          </g>
+        );
+      })()}
     </svg>
   );
 }
