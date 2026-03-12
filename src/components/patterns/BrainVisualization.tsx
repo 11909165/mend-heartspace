@@ -509,6 +509,7 @@ export function BrainVisualization({
               }}
               onMouseEnter={() => handleNodeEnter(node.id)}
               onMouseLeave={handleNodeLeave}
+              onTouchStart={(e: any) => handleNodeTouch(node.id, e)}
               onClick={(e) => { e.stopPropagation(); handleNodeClick(node.id); }}
               animate={{
                 r: radiusRange,
