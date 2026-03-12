@@ -1,5 +1,4 @@
-import { useRef, useEffect, useState, useMemo } from "react";
-import { motion, useScroll, useTransform, useSpring } from "framer-motion";
+import { motion } from "framer-motion";
 
 import reflectionImg from "@/assets/reflection-ui.png";
 import journalImg from "@/assets/journal-ui.png";
@@ -50,40 +49,45 @@ const steps = [
   },
 ];
 
-/* ── Single story panel ── */
-function StoryPanel({
-  step,
-  progress,
-}: {
-  step: (typeof steps)[0];
-  progress: number; // 0 = entering, 0.5 = centered, 1 = exiting
-}) {
-  // fade: peak at 0.3–0.7, fade edges
-  const opacity = progress < 0.15
-    ? progress / 0.15
-    : progress > 0.8
-      ? (1 - progress) / 0.2
-      : 1;
+const easeOutCubic: [number, number, number, number] = [0.33, 1, 0.68, 1];
 
-  // slide up from 24px
-  const translateY = progress < 0.3 ? 24 * (1 - progress / 0.3) : 0;
+const textVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: easeOutCubic },
+  },
+};
 
-  // screenshot scale
-  const scale = progress < 0.3
-    ? 0.97 + 0.03 * (progress / 0.3)
-    : 1;
+const imageVariants = {
+  hidden: { opacity: 0, y: 20, scale: 0.96 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.6, ease: easeOutCubic, delay: 0.1 },
+  },
+};
+
+function StoryStep({ step }: { step: (typeof steps)[0] }) {
+  // Patterns step triggers later (60% in viewport) via smaller margin
+  const viewportMargin = step.signature ? "-40%" : "-20%";
 
   return (
     <div
-      className="absolute inset-0 flex flex-col items-center justify-center px-4 sm:px-6"
-      style={{
-        opacity: Math.max(0, Math.min(1, opacity)),
-        transform: `translateY(${translateY}px)`,
-        pointerEvents: opacity < 0.1 ? "none" : "auto",
-      }}
+      className={`flex flex-col items-center px-4 sm:px-6 ${
+        step.signature ? "pt-20" : ""
+      }`}
     >
       {/* Text */}
-      <div className="text-center mb-8 max-w-lg">
+      <motion.div
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: viewportMargin }}
+        variants={textVariants}
+        className="text-center mb-8 max-w-lg"
+      >
         <span className="text-xs tracking-[0.2em] uppercase text-muted-foreground/60 font-medium">
           {step.label}
         </span>
@@ -92,13 +96,23 @@ function StoryPanel({
         </h3>
         <div className="mt-4 space-y-2 text-muted-foreground text-[15px] md:text-base leading-relaxed">
           {step.copy.map((line, i) => (
-            <p key={i} className="whitespace-pre-line">{line}</p>
+            <p key={i} className="whitespace-pre-line">
+              {line}
+            </p>
           ))}
         </div>
-      </div>
+      </motion.div>
 
       {/* Screenshot */}
-      <div className={`relative w-full ${step.signature ? "max-w-2xl" : "max-w-xl"}`}>
+      <motion.div
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: viewportMargin }}
+        variants={imageVariants}
+        className={`relative w-full ${
+          step.signature ? "max-w-[1000px]" : "max-w-xl"
+        }`}
+      >
         {/* Lavender glow */}
         <div
           className="absolute -inset-10 rounded-[32px] pointer-events-none"
@@ -107,10 +121,7 @@ function StoryPanel({
               "radial-gradient(ellipse at center, hsl(270 50% 85% / 0.12) 0%, transparent 70%)",
           }}
         />
-        <div
-          className="relative rounded-[24px] p-3 bg-card shadow-card overflow-hidden border border-border/50"
-          style={{ transform: `scale(${scale})` }}
-        >
+        <div className="relative rounded-[24px] p-3 bg-card shadow-card overflow-hidden border border-border/50">
           <img
             src={step.image}
             alt={step.alt}
@@ -118,41 +129,16 @@ function StoryPanel({
             loading="lazy"
           />
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
 
-/* ── Main scroll storytelling section ── */
 export default function ScrollStorytelling() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"],
-  });
-
-  // Smooth out the scroll progress
-  const smoothProgress = useSpring(scrollYProgress, {
-    stiffness: 100,
-    damping: 30,
-    restDelta: 0.001,
-  });
-
-  const [progress, setProgress] = useState(0);
-
-  useEffect(() => {
-    const unsubscribe = smoothProgress.on("change", (v) => setProgress(v));
-    return unsubscribe;
-  }, [smoothProgress]);
-
-  // Map overall progress to per-step progress
-  // Each step gets ~25% of total scroll, with overlap zones
-  const stepCount = steps.length;
-
   return (
     <section className="relative bg-background">
       {/* Section header */}
-      <div className="pt-28 lg:pt-40 pb-12 text-center px-4">
+      <div className="pt-28 lg:pt-40 pb-16 text-center px-4">
         <motion.h2
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -173,31 +159,11 @@ export default function ScrollStorytelling() {
         </motion.p>
       </div>
 
-      {/* Scroll container: each step gets ~85vh of scroll space */}
-      <div
-        ref={containerRef}
-        style={{ height: `${stepCount * 85}vh` }}
-        className="relative"
-      >
-        {/* Sticky viewport */}
-        <div className="sticky top-0 h-screen flex items-center justify-center overflow-hidden">
-          {steps.map((step, i) => {
-            // Each step occupies 1/stepCount of progress
-            const stepStart = i / stepCount;
-            const stepEnd = (i + 1) / stepCount;
-            const stepProgress = Math.max(
-              0,
-              Math.min(1, (progress - stepStart) / (stepEnd - stepStart))
-            );
-
-            // Only render if in a reasonable range
-            if (stepProgress < -0.1 || stepProgress > 1.1) return null;
-
-            return (
-              <StoryPanel key={i} step={step} progress={stepProgress} />
-            );
-          })}
-        </div>
+      {/* Steps with generous spacing */}
+      <div className="space-y-28 lg:space-y-36 pb-28 lg:pb-40">
+        {steps.map((step, i) => (
+          <StoryStep key={i} step={step} />
+        ))}
       </div>
     </section>
   );
