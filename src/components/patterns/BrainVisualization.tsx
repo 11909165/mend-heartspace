@@ -238,6 +238,7 @@ export function BrainVisualization({
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [onboardingDone, setOnboardingDone] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const nodeMap = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
@@ -340,7 +341,25 @@ export function BrainVisualization({
 
   const pathActive = !!connectedNodeIds && !selectedNode;
 
-  /* Dominant nodes get persistent labels (weight > 0.6) */
+  /* Onboarding: pick the heaviest node to spotlight */
+  const onboardingNode = useMemo(() => {
+    if (isEmpty || !hasRealData || nodes.length === 0) return null;
+    return nodes.reduce((best, n) => (n.weight > best.weight ? n : best), nodes[0]);
+  }, [nodes, isEmpty, hasRealData]);
+
+  /* Auto-dismiss onboarding after 3.5s or on any interaction */
+  useEffect(() => {
+    if (onboardingDone || !onboardingNode) return;
+    const timer = setTimeout(() => setOnboardingDone(true), 3500);
+    return () => clearTimeout(timer);
+  }, [onboardingDone, onboardingNode]);
+
+  // Dismiss onboarding on any hover/tap
+  useEffect(() => {
+    if (hoveredNode || selectedNode) setOnboardingDone(true);
+  }, [hoveredNode, selectedNode]);
+
+  const showOnboarding = hasRealData && !onboardingDone && !!onboardingNode;
   const dominantNodes = useMemo(() => {
     if (isEmpty) return [];
     return nodes.filter((n) => n.weight >= 0.6 && n.label !== "...");
@@ -573,7 +592,48 @@ export function BrainVisualization({
           );
         })}
 
-        {/* Hover tooltip — HTML foreignObject for proper wrapping */}
+        {/* Onboarding spotlight animation */}
+        <AnimatePresence>
+          {showOnboarding && onboardingNode && (
+            <>
+              {/* Expanding ring */}
+              <motion.circle
+                cx={onboardingNode.x}
+                cy={onboardingNode.y}
+                r={onboardingNode.size * 2.5}
+                fill="none"
+                stroke={`url(#node-grad-${onboardingNode.cluster})`}
+                strokeWidth="0.3"
+                initial={{ r: onboardingNode.size * 1.5, opacity: 0 }}
+                animate={{
+                  r: [onboardingNode.size * 2, onboardingNode.size * 3.5, onboardingNode.size * 2],
+                  opacity: [0, 0.45, 0],
+                }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 2, ease: "easeInOut", repeat: Infinity }}
+                style={{ pointerEvents: "none" }}
+              />
+              {/* Callout label */}
+              <motion.text
+                x={onboardingNode.x}
+                y={onboardingNode.y - onboardingNode.size * 3 - 2}
+                textAnchor="middle"
+                fontSize="2"
+                fontWeight="500"
+                fontFamily={FONT_STACK}
+                fill="hsl(var(--muted-foreground))"
+                style={{ pointerEvents: "none", textTransform: "capitalize" }}
+                initial={{ opacity: 0, y: onboardingNode.y - onboardingNode.size * 2 }}
+                animate={{ opacity: 0.7, y: onboardingNode.y - onboardingNode.size * 3 - 2 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.6, ease: "easeOut", delay: 0.3 }}
+              >
+                {onboardingNode.label}
+              </motion.text>
+            </>
+          )}
+        </AnimatePresence>
+
         {hoveredNode !== null && !selectedNode && !isEmpty && (() => {
           const node = nodeMap.get(hoveredNode);
           if (!node) return null;
