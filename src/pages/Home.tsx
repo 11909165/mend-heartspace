@@ -5,143 +5,37 @@ import { Layout } from "@/components/layout/Layout";
 import { useMemo } from "react";
 import ScrollStorytelling from "@/components/home/ScrollStorytelling";
 
-/* ── clustered neural constellation (background decoration) ── */
-interface ConstellationNode {
-  id: number;
-  x: number;
-  y: number;
-  primary: boolean;
-  blur: number;
-  driftX: number;
-  driftY: number;
-  duration: number;
-}
-
+/* ── tiny inline neural cluster (background decoration) ── */
 function NeuralCluster() {
   const { nodes, edges } = useMemo(() => {
-    const rand = ((s: number) => () => {
-      s = (s * 16807) % 2147483647;
-      return (s - 1) / 2147483646;
-    })(42);
-
-    const nodeCount = 36;
-    const n: ConstellationNode[] = [];
-
-    for (let i = 0; i < nodeCount; i++) {
-      // Gaussian-ish clustering: sum multiple randoms for center bias
-      const isPrimary = i < 16;
-      let x: number, y: number;
-
-      if (isPrimary) {
-        // Central cluster with organic spread
-        const angle = rand() * Math.PI * 2;
-        const radius = (rand() + rand()) * 0.5 * 18; // clustered near center
-        x = 50 + Math.cos(angle) * radius * (0.8 + rand() * 0.4);
-        y = 50 + Math.sin(angle) * radius * (0.7 + rand() * 0.5);
-      } else {
-        // Secondary nodes spread outward
-        const angle = rand() * Math.PI * 2;
-        const radius = 14 + rand() * 30;
-        x = 50 + Math.cos(angle) * radius;
-        y = 50 + Math.sin(angle) * radius;
-      }
-
-      // Clamp to viewbox
-      x = Math.max(4, Math.min(96, x));
-      y = Math.max(4, Math.min(96, y));
-
-      n.push({
-        id: i,
-        x,
-        y,
-        primary: isPrimary,
-        blur: isPrimary ? 0 : rand() > 0.5 ? 1 + rand() : 0,
-        driftX: (rand() - 0.5) * (isPrimary ? 8 : 12),
-        driftY: (rand() - 0.5) * (isPrimary ? 6 : 10),
-        duration: 20 + rand() * 10,
-      });
-    }
-
-    // Sparse connections, mostly between central nodes
+    const rand = ((s: number) => () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; })(42);
+    const n = Array.from({ length: 18 }, (_, i) => ({
+      id: i,
+      x: 20 + rand() * 60,
+      y: 20 + rand() * 60,
+    }));
     const e: { from: number; to: number }[] = [];
-    for (let i = 0; i < n.length; i++) {
+    for (let i = 0; i < n.length; i++)
       for (let j = i + 1; j < n.length; j++) {
         const d = Math.hypot(n[i].x - n[j].x, n[i].y - n[j].y);
-        const bothPrimary = n[i].primary && n[j].primary;
-        const threshold = bothPrimary ? 18 : 12;
-        const chance = bothPrimary ? 0.35 : 0.75;
-        if (d < threshold && rand() > chance) {
-          e.push({ from: i, to: j });
-        }
+        if (d < 20 && rand() > 0.4) e.push({ from: i, to: j });
       }
-    }
-
     return { nodes: n, edges: e };
   }, []);
 
   return (
     <svg viewBox="0 0 100 100" className="w-full h-full" aria-hidden>
-      <defs>
-        <filter id="node-blur-1">
-          <feGaussianBlur stdDeviation="0.3" />
-        </filter>
-        <filter id="node-blur-2">
-          <feGaussianBlur stdDeviation="0.6" />
-        </filter>
-      </defs>
-
-      {/* Connection lines */}
       {edges.map((e, i) => (
-        <motion.line
-          key={`edge-${i}`}
-          x1={nodes[e.from].x}
-          y1={nodes[e.from].y}
-          x2={nodes[e.to].x}
-          y2={nodes[e.to].y}
-          stroke="hsl(270 45% 80%)"
-          strokeWidth={0.18}
-          strokeOpacity={0.18}
-          animate={{
-            strokeOpacity: [0.14, 0.22, 0.14],
-          }}
-          transition={{
-            duration: 25,
-            ease: "easeInOut",
-            repeat: Infinity,
-            delay: i * 0.8,
-          }}
+        <line key={i} x1={nodes[e.from].x} y1={nodes[e.from].y} x2={nodes[e.to].x} y2={nodes[e.to].y}
+          stroke="hsl(270 45% 80%)" strokeWidth={0.2} strokeOpacity={0.25} />
+      ))}
+      {nodes.map((n) => (
+        <motion.circle key={n.id} cx={n.x} cy={n.y} r={1.2}
+          fill="hsl(270 45% 78%)"
+          animate={{ r: [1.2, 1.6, 1.2], opacity: [0.25, 0.45, 0.25] }}
+          transition={{ duration: 5, ease: "easeInOut", repeat: Infinity, delay: n.id * 0.3 }}
         />
       ))}
-
-      {/* Nodes with slow drift */}
-      {nodes.map((n) => {
-        const r = n.primary ? 1.4 : 0.85;
-        const baseOpacity = n.primary ? 0.45 : 0.3;
-        const blurFilter =
-          n.blur > 1 ? "url(#node-blur-2)" : n.blur > 0 ? "url(#node-blur-1)" : undefined;
-
-        return (
-          <motion.circle
-            key={n.id}
-            cx={n.x}
-            cy={n.y}
-            r={r}
-            fill="hsl(270 45% 78%)"
-            filter={blurFilter}
-            animate={{
-              cx: [n.x, n.x + n.driftX * 0.5, n.x - n.driftX * 0.3, n.x],
-              cy: [n.y, n.y - n.driftY * 0.4, n.y + n.driftY * 0.5, n.y],
-              opacity: [baseOpacity, baseOpacity * 1.15, baseOpacity * 0.85, baseOpacity],
-            }}
-            transition={{
-              duration: n.duration,
-              ease: "easeInOut",
-              repeat: Infinity,
-              delay: n.id * 0.6,
-            }}
-          />
-        );
-      })}
     </svg>
   );
 }
@@ -165,8 +59,8 @@ export default function Home() {
       {/* ─── SECTION 1 — Hero ─── */}
       <section className="relative min-h-[85vh] flex items-center overflow-hidden gradient-hero">
         {/* Background neural cluster */}
-        <div className="absolute inset-0 pointer-events-none opacity-40">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] h-[85vh] max-w-[1100px] max-h-[800px]">
+        <div className="absolute inset-0 pointer-events-none opacity-30">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] md:w-[700px] md:h-[700px]">
             <NeuralCluster />
           </div>
         </div>
