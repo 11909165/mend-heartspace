@@ -1,4 +1,5 @@
-import { motion } from "framer-motion";
+import { useRef, useEffect, useState } from "react";
+import { motion, useScroll, useSpring } from "framer-motion";
 
 import reflectionImg from "@/assets/reflection-ui.png";
 import journalImg from "@/assets/journal-ui.png";
@@ -49,96 +50,43 @@ const steps = [
   },
 ];
 
-const easeOutCubic: [number, number, number, number] = [0.33, 1, 0.68, 1];
-
-const textVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: easeOutCubic },
-  },
-};
-
-const imageVariants = {
-  hidden: { opacity: 0, y: 20, scale: 0.96 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { duration: 0.6, ease: easeOutCubic, delay: 0.1 },
-  },
-};
-
-function StoryStep({ step }: { step: (typeof steps)[0] }) {
-  // Patterns step triggers later (60% in viewport) via smaller margin
-  const viewportMargin = step.signature ? "-40%" : "-20%";
-
-  return (
-    <div
-      className={`flex flex-col items-center px-4 sm:px-6 ${
-        step.signature ? "pt-20" : ""
-      }`}
-    >
-      {/* Text */}
-      <motion.div
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: viewportMargin }}
-        variants={textVariants}
-        className="text-center mb-8 max-w-lg"
-      >
-        <span className="text-xs tracking-[0.2em] uppercase text-muted-foreground/60 font-medium">
-          {step.label}
-        </span>
-        <h3 className="mt-2 text-2xl md:text-3xl lg:text-4xl font-serif font-medium text-foreground">
-          {step.title}
-        </h3>
-        <div className="mt-4 space-y-2 text-muted-foreground text-[15px] md:text-base leading-relaxed">
-          {step.copy.map((line, i) => (
-            <p key={i} className="whitespace-pre-line">
-              {line}
-            </p>
-          ))}
-        </div>
-      </motion.div>
-
-      {/* Screenshot */}
-      <motion.div
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: viewportMargin }}
-        variants={imageVariants}
-        className={`relative w-full ${
-          step.signature ? "max-w-[1000px]" : "max-w-xl"
-        }`}
-      >
-        {/* Lavender glow */}
-        <div
-          className="absolute -inset-10 rounded-[32px] pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(ellipse at center, hsl(270 50% 85% / 0.12) 0%, transparent 70%)",
-          }}
-        />
-        <div className="relative rounded-[24px] p-3 bg-card shadow-card overflow-hidden border border-border/50">
-          <img
-            src={step.image}
-            alt={step.alt}
-            className="w-full h-auto rounded-[16px]"
-            loading="lazy"
-          />
-        </div>
-      </motion.div>
-    </div>
-  );
+/* Compute per-step visibility from 0..1 scroll progress */
+function getStepVisibility(scrollProgress: number, stepIndex: number, total: number) {
+  const segmentSize = 1 / total;
+  const center = (stepIndex + 0.5) * segmentSize;
+  const halfWidth = segmentSize * 0.5;
+  const dist = Math.abs(scrollProgress - center);
+  // 1 at center, drops to 0 at edges
+  const t = Math.max(0, 1 - dist / halfWidth);
+  return t;
 }
 
 export default function ScrollStorytelling() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end end"],
+  });
+
+  const smoothProgress = useSpring(scrollYProgress, {
+    stiffness: 80,
+    damping: 25,
+    restDelta: 0.0005,
+  });
+
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const unsub = smoothProgress.on("change", (v) => setProgress(v));
+    return unsub;
+  }, [smoothProgress]);
+
+  const total = steps.length;
+
   return (
     <section className="relative bg-background">
       {/* Section header */}
-      <div className="pt-28 lg:pt-40 pb-16 text-center px-4">
+      <div className="pt-28 lg:pt-40 pb-12 text-center px-4">
         <motion.h2
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -159,11 +107,81 @@ export default function ScrollStorytelling() {
         </motion.p>
       </div>
 
-      {/* Steps with generous spacing */}
-      <div className="space-y-28 lg:space-y-36 pb-28 lg:pb-40">
-        {steps.map((step, i) => (
-          <StoryStep key={i} step={step} />
-        ))}
+      {/* Scroll runway */}
+      <div
+        ref={containerRef}
+        style={{ height: `${total * 90}vh` }}
+        className="relative"
+      >
+        {/* Sticky viewport */}
+        <div className="sticky top-0 h-screen flex items-center justify-center overflow-hidden">
+          {steps.map((step, i) => {
+            const vis = getStepVisibility(progress, i, total);
+            if (vis < 0.01) return null;
+
+            // Active: opacity 1, y 0, scale 1
+            // Inactive: opacity ~0.35, y 24, scale 0.97
+            const opacity = 0.3 + vis * 0.7;
+            const translateY = (1 - vis) * 24;
+            const imgScale = 0.97 + vis * 0.03;
+            const imgOpacity = 0.25 + vis * 0.75;
+
+            return (
+              <div
+                key={i}
+                className="absolute inset-0 flex flex-col items-center justify-center px-4 sm:px-6"
+                style={{
+                  opacity,
+                  transform: `translateY(${translateY}px)`,
+                  zIndex: Math.round(vis * 10),
+                  pointerEvents: vis > 0.5 ? "auto" : "none",
+                  willChange: "transform, opacity",
+                }}
+              >
+                {/* Text */}
+                <div className="text-center mb-8 max-w-lg">
+                  <span className="text-xs tracking-[0.2em] uppercase text-muted-foreground/60 font-medium">
+                    {step.label}
+                  </span>
+                  <h3 className="mt-2 text-2xl md:text-3xl lg:text-4xl font-serif font-medium text-foreground">
+                    {step.title}
+                  </h3>
+                  <div className="mt-4 space-y-2 text-muted-foreground text-[15px] md:text-base leading-relaxed">
+                    {step.copy.map((line, j) => (
+                      <p key={j} className="whitespace-pre-line">{line}</p>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Screenshot */}
+                <div className={`relative w-full ${step.signature ? "max-w-[1000px]" : "max-w-xl"}`}>
+                  <div
+                    className="absolute -inset-10 rounded-[32px] pointer-events-none"
+                    style={{
+                      background:
+                        "radial-gradient(ellipse at center, hsl(270 50% 85% / 0.12) 0%, transparent 70%)",
+                    }}
+                  />
+                  <div
+                    className="relative rounded-[24px] p-3 bg-card shadow-card overflow-hidden border border-border/50"
+                    style={{
+                      transform: `scale(${imgScale})`,
+                      opacity: imgOpacity,
+                      willChange: "transform, opacity",
+                    }}
+                  >
+                    <img
+                      src={step.image}
+                      alt={step.alt}
+                      className="w-full h-auto rounded-[16px]"
+                      loading="lazy"
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </section>
   );
