@@ -3,11 +3,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/layout/Layout";
 import { useMemo } from "react";
-
-import reflectionImg from "@/assets/reflection-ui.png";
-import journalImg from "@/assets/journal-ui.png";
-import patternsImg from "@/assets/patterns-ui2.png";
-import supportGroupsImg from "@/assets/supportgroups-ui.png";
+import ScrollStorytelling from "@/components/home/ScrollStorytelling";
 
 /* ── tiny inline neural cluster (background decoration) ── */
 function NeuralCluster() {
