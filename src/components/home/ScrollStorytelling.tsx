@@ -1,5 +1,5 @@
-import { useRef, useEffect, useState } from "react";
-import { motion, useScroll, useSpring } from "framer-motion";
+import { useRef, useEffect, useState, useMemo } from "react";
+import { motion, useScroll, useTransform, useSpring } from "framer-motion";
 
 import reflectionImg from "@/assets/reflection-ui.png";
 import journalImg from "@/assets/journal-ui.png";
@@ -50,17 +50,80 @@ const steps = [
   },
 ];
 
-/* Compute per-step visibility from 0..1 scroll progress */
-function getStepVisibility(scrollProgress: number, stepIndex: number, total: number) {
-  const segmentSize = 1 / total;
-  const center = (stepIndex + 0.5) * segmentSize;
-  const halfWidth = segmentSize * 0.5;
-  const dist = Math.abs(scrollProgress - center);
-  // 1 at center, drops to 0 at edges
-  const t = Math.max(0, 1 - dist / halfWidth);
-  return t;
+/* ── Single story panel ── */
+function StoryPanel({
+  step,
+  progress,
+}: {
+  step: (typeof steps)[0];
+  progress: number; // 0 = entering, 0.5 = centered, 1 = exiting
+}) {
+  // fade: peak at 0.3–0.7, fade edges
+  const opacity = progress < 0.15
+    ? progress / 0.15
+    : progress > 0.8
+      ? (1 - progress) / 0.2
+      : 1;
+
+  // slide up from 24px
+  const translateY = progress < 0.3 ? 24 * (1 - progress / 0.3) : 0;
+
+  // screenshot scale
+  const scale = progress < 0.3
+    ? 0.97 + 0.03 * (progress / 0.3)
+    : 1;
+
+  return (
+    <div
+      className="absolute inset-0 flex flex-col items-center justify-center px-4 sm:px-6"
+      style={{
+        opacity: Math.max(0, Math.min(1, opacity)),
+        transform: `translateY(${translateY}px)`,
+        pointerEvents: opacity < 0.1 ? "none" : "auto",
+      }}
+    >
+      {/* Text */}
+      <div className="text-center mb-8 max-w-lg">
+        <span className="text-xs tracking-[0.2em] uppercase text-muted-foreground/60 font-medium">
+          {step.label}
+        </span>
+        <h3 className="mt-2 text-2xl md:text-3xl lg:text-4xl font-serif font-medium text-foreground">
+          {step.title}
+        </h3>
+        <div className="mt-4 space-y-2 text-muted-foreground text-[15px] md:text-base leading-relaxed">
+          {step.copy.map((line, i) => (
+            <p key={i} className="whitespace-pre-line">{line}</p>
+          ))}
+        </div>
+      </div>
+
+      {/* Screenshot */}
+      <div className={`relative w-full ${step.signature ? "max-w-2xl" : "max-w-xl"}`}>
+        {/* Lavender glow */}
+        <div
+          className="absolute -inset-10 rounded-[32px] pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(ellipse at center, hsl(270 50% 85% / 0.12) 0%, transparent 70%)",
+          }}
+        />
+        <div
+          className="relative rounded-[24px] p-3 bg-card shadow-card overflow-hidden border border-border/50"
+          style={{ transform: `scale(${scale})` }}
+        >
+          <img
+            src={step.image}
+            alt={step.alt}
+            className="w-full h-auto rounded-[16px]"
+            loading="lazy"
+          />
+        </div>
+      </div>
+    </div>
+  );
 }
 
+/* ── Main scroll storytelling section ── */
 export default function ScrollStorytelling() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
@@ -68,20 +131,23 @@ export default function ScrollStorytelling() {
     offset: ["start start", "end end"],
   });
 
+  // Smooth out the scroll progress
   const smoothProgress = useSpring(scrollYProgress, {
-    stiffness: 80,
-    damping: 25,
-    restDelta: 0.0005,
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001,
   });
 
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    const unsub = smoothProgress.on("change", (v) => setProgress(v));
-    return unsub;
+    const unsubscribe = smoothProgress.on("change", (v) => setProgress(v));
+    return unsubscribe;
   }, [smoothProgress]);
 
-  const total = steps.length;
+  // Map overall progress to per-step progress
+  // Each step gets ~25% of total scroll, with overlap zones
+  const stepCount = steps.length;
 
   return (
     <section className="relative bg-background">
@@ -107,78 +173,28 @@ export default function ScrollStorytelling() {
         </motion.p>
       </div>
 
-      {/* Scroll runway */}
+      {/* Scroll container: each step gets ~85vh of scroll space */}
       <div
         ref={containerRef}
-        style={{ height: `${total * 90}vh` }}
+        style={{ height: `${stepCount * 85}vh` }}
         className="relative"
       >
         {/* Sticky viewport */}
         <div className="sticky top-0 h-screen flex items-center justify-center overflow-hidden">
           {steps.map((step, i) => {
-            const vis = getStepVisibility(progress, i, total);
-            if (vis < 0.01) return null;
+            // Each step occupies 1/stepCount of progress
+            const stepStart = i / stepCount;
+            const stepEnd = (i + 1) / stepCount;
+            const stepProgress = Math.max(
+              0,
+              Math.min(1, (progress - stepStart) / (stepEnd - stepStart))
+            );
 
-            // Active: opacity 1, y 0, scale 1
-            // Inactive: opacity ~0.35, y 24, scale 0.97
-            const opacity = 0.3 + vis * 0.7;
-            const translateY = (1 - vis) * 24;
-            const imgScale = 0.97 + vis * 0.03;
-            const imgOpacity = 0.25 + vis * 0.75;
+            // Only render if in a reasonable range
+            if (stepProgress < -0.1 || stepProgress > 1.1) return null;
 
             return (
-              <div
-                key={i}
-                className="absolute inset-0 flex flex-col items-center justify-center px-4 sm:px-6"
-                style={{
-                  opacity,
-                  transform: `translateY(${translateY}px)`,
-                  zIndex: Math.round(vis * 10),
-                  pointerEvents: vis > 0.5 ? "auto" : "none",
-                  willChange: "transform, opacity",
-                }}
-              >
-                {/* Text */}
-                <div className="text-center mb-8 max-w-lg">
-                  <span className="text-xs tracking-[0.2em] uppercase text-muted-foreground/60 font-medium">
-                    {step.label}
-                  </span>
-                  <h3 className="mt-2 text-2xl md:text-3xl lg:text-4xl font-serif font-medium text-foreground">
-                    {step.title}
-                  </h3>
-                  <div className="mt-4 space-y-2 text-muted-foreground text-[15px] md:text-base leading-relaxed">
-                    {step.copy.map((line, j) => (
-                      <p key={j} className="whitespace-pre-line">{line}</p>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Screenshot */}
-                <div className={`relative w-full ${step.signature ? "max-w-[1000px]" : "max-w-xl"}`}>
-                  <div
-                    className="absolute -inset-10 rounded-[32px] pointer-events-none"
-                    style={{
-                      background:
-                        "radial-gradient(ellipse at center, hsl(270 50% 85% / 0.12) 0%, transparent 70%)",
-                    }}
-                  />
-                  <div
-                    className="relative rounded-[24px] p-3 bg-card shadow-card overflow-hidden border border-border/50"
-                    style={{
-                      transform: `scale(${imgScale})`,
-                      opacity: imgOpacity,
-                      willChange: "transform, opacity",
-                    }}
-                  >
-                    <img
-                      src={step.image}
-                      alt={step.alt}
-                      className="w-full h-auto rounded-[16px]"
-                      loading="lazy"
-                    />
-                  </div>
-                </div>
-              </div>
+              <StoryPanel key={i} step={step} progress={stepProgress} />
             );
           })}
         </div>
