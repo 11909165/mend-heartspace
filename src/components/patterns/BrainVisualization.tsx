@@ -314,13 +314,24 @@ export function BrainVisualization({
     setSelectedNode(null);
   }, []);
 
+  const isTouchDevice = useRef(false);
+
   const handleNodeEnter = useCallback((nodeId: string) => {
-    if (!isEmpty) setHoveredNode(nodeId);
+    if (!isEmpty && !isTouchDevice.current) setHoveredNode(nodeId);
   }, [isEmpty]);
 
   const handleNodeLeave = useCallback(() => {
-    setHoveredNode(null);
+    if (!isTouchDevice.current) setHoveredNode(null);
   }, []);
+
+  const handleNodeTouch = useCallback((nodeId: string, e: React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    isTouchDevice.current = true;
+    if (!isEmpty) {
+      setHoveredNode((prev) => (prev === nodeId ? null : nodeId));
+    }
+  }, [isEmpty]);
 
   const selectedLayoutNode = selectedNode ? nodeMap.get(selectedNode) : null;
   const insight = selectedLayoutNode ? getMockInsight(selectedLayoutNode) : null;
