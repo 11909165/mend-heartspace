@@ -6,7 +6,7 @@ import { useMemo } from "react";
 
 import reflectionImg from "@/assets/reflection-ui.png";
 import journalImg from "@/assets/journal-ui.png";
-import patternsImg from "@/assets/patterns-ui.png";
+import patternsImg from "@/assets/patterns-ui2.png";
 import supportGroupsImg from "@/assets/supportgroups-ui.png";
 
 /* ── tiny inline neural cluster (background decoration) ── */
