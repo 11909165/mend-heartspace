@@ -314,13 +314,24 @@ export function BrainVisualization({
     setSelectedNode(null);
   }, []);
 
+  const isTouchDevice = useRef(false);
+
   const handleNodeEnter = useCallback((nodeId: string) => {
-    if (!isEmpty) setHoveredNode(nodeId);
+    if (!isEmpty && !isTouchDevice.current) setHoveredNode(nodeId);
   }, [isEmpty]);
 
   const handleNodeLeave = useCallback(() => {
-    setHoveredNode(null);
+    if (!isTouchDevice.current) setHoveredNode(null);
   }, []);
+
+  const handleNodeTouch = useCallback((nodeId: string, e: React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    isTouchDevice.current = true;
+    if (!isEmpty) {
+      setHoveredNode((prev) => (prev === nodeId ? null : nodeId));
+    }
+  }, [isEmpty]);
 
   const selectedLayoutNode = selectedNode ? nodeMap.get(selectedNode) : null;
   const insight = selectedLayoutNode ? getMockInsight(selectedLayoutNode) : null;
@@ -340,6 +351,7 @@ export function BrainVisualization({
         className="w-full h-full"
         aria-label="Emotional pattern visualization"
         onClick={handleBgClick}
+        onTouchStart={() => { isTouchDevice.current = true; setHoveredNode(null); }}
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
@@ -497,6 +509,7 @@ export function BrainVisualization({
               }}
               onMouseEnter={() => handleNodeEnter(node.id)}
               onMouseLeave={handleNodeLeave}
+              onTouchStart={(e: any) => handleNodeTouch(node.id, e)}
               onClick={(e) => { e.stopPropagation(); handleNodeClick(node.id); }}
               animate={{
                 r: radiusRange,
