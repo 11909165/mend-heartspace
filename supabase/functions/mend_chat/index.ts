@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-  "Access-Control-Expose-Headers": "X-Communication-Bucket",
+  "Access-Control-Expose-Headers": "X-Communication-Bucket, X-Formulation-Style, X-Question-Type",
 };
 
 /* ── Bucket definitions per mode ── */
@@ -27,9 +27,6 @@ const CRISIS_KEYWORDS = [
   "hurt myself",
   "not worth living",
   "better off dead",
-  "helpline",
-  "hotline",
-  "emergency number",
 ];
 
 function detectCrisis(text: string): boolean {
@@ -95,29 +92,75 @@ function classifyBucket(userText: string, mode: string): string {
 /* ── Mode-specific system templates ── */
 const MODE_TEMPLATES: Record<string, string> = {
   "Reflect with me": `MODE: Reflect with me
-Goal: Gentle, grounded presence and curiosity.
-Structure: Simply reflect what they said in everyday language, then optionally ask a natural, conversational question.
-Tone: Like a mature, warm friend over text. No dramatic phrasing.`,
+Goal: Insight + emotional layering.
+Structure (follow exactly):
+1. Formulation: "Because [specific event], you're feeling [surface emotion] on top of [protective emotion], and you need [inferred need]."
+2. Emotional deepening: Layer surface emotion with a possible protective emotion underneath. Provide emotional deepening, not advice. Reference light past context if relevant.
+3. One precise curiosity question that invites self-exploration.
+
+Rules:
+- Start with formulation.
+- Layer surface + protective emotion.
+- No advice. Emotional deepening only.
+- One precise curiosity question.
+- May reference light past context if relevant.
+Tone: Slow, grounded, insightful.`,
 
   "Sit with me": `MODE: Sit with me
 Goal: Containment + presence.
-Structure: Validate their situation in a simple sentence. Be present. No advice or deep analysis.
-Tone: Calm, steady, warm. Like a dependable friend.`,
+Structure (follow exactly):
+1. Reflection: Mirror their situation plainly using their own words.
+2. Validation: Name the dominant emotion clearly and validate it without explaining it.
+3. Gentle anchor: At most one gentle grounding question or a brief anchoring statement.
+
+Rules:
+- Mirror situation plainly.
+- Name dominant emotion clearly.
+- No reframes. No pattern linking. No interpretation.
+- At most one gentle grounding question.
+Tone: Calm, steady, warm. Minimal words. Maximum presence.`,
 
   "Challenge me gently": `MODE: Challenge me gently
 Goal: Expand perspective safely.
-Structure: Softly point out an alternative angle, but keep it very brief.
-Tone: Supportive, honest, low-key.`,
+Structure (follow exactly):
+1. Assumption spotted: Identify one possible assumption in what they shared.
+2. Alternate frame: Offer one alternative interpretation that respects their autonomy.
+3. Closing reflection: End with a brief, grounded statement that leaves space for the user to sit with the new frame.
+
+Rules:
+- Identify one possible assumption.
+- Offer one alternative interpretation.
+- Maintain autonomy support. No shaming language.
+- Do NOT ask any questions. End with a statement, not a question.
+Tone: Calm, firm, respectful.`,
 
   "Help me decide": `MODE: Help me decide
-Goal: Reduce overwhelm.
-Structure: Clarify the actual choice they are making in plain words.
-Tone: Grounded, practical, friendly.`,
+Goal: Reduce overwhelm, clarify tradeoffs.
+Structure (follow exactly):
+1. Define choice: State the real decision in one sentence.
+2. Tradeoff contrast: Present 2 options with a clear tradeoff and surface the likely value conflict.
+3. Clarifying question: Ask one constraint question that narrows their choice.
+
+Rules:
+- Define the real decision in one sentence.
+- Present 2 options with a tradeoff.
+- Surface likely value conflict.
+- Ask one constraint question.
+Tone: Structured, clear, empowering.`,
 
   "Just listen": `MODE: Just listen
 Goal: Reflect only. Zero interpretation.
-Structure: Simple acknowledgment. "I'm here." Minimal words.
-Tone: Present, simple, raw.`,
+Structure (follow exactly):
+1. Mirror: Repeat the core situation using the user's own language.
+2. Emotion naming: Name the main emotion you hear, nothing more.
+3. Presence: End with a brief, warm statement of presence (e.g., "I'm here." or "That's a lot to carry.").
+
+Rules:
+- Repeat core situation using user's own language.
+- Name main emotion. Nothing more.
+- ABSOLUTELY NO advice. NO reframing. NO interpretation. NO pattern references.
+- Do NOT ask any questions. No invitations, no prompts. End with a statement.
+Tone: Present, simple, non-analytical.`,
 };
 
 const VARIATION_OPENERS = [
@@ -242,7 +285,7 @@ function buildDraftPrompt(
   const modeTemplate = MODE_TEMPLATES[mode] || MODE_TEMPLATES["Reflect with me"];
   const bucketContext =
     bucket === "Crisis"
-      ? "CRISIS OVERRIDE: Gently acknowledge what they shared. If they are in crisis, encourage reaching out to the Indian Suicide Hotline at 9152987821 or someone they trust. CRITICAL: Never mention 988 or 741741. Do NOT add any standard safety boilerplate. Be present, not prescriptive. Keep your response brief and warm."
+      ? "CRISIS OVERRIDE: Gently acknowledge what they shared. Encourage reaching out to someone they trust or a helpline. Be present, not prescriptive. Keep your response brief and warm."
       : `Communication bucket: ${bucket}`;
 
   let userContext = "";
@@ -278,7 +321,7 @@ function buildDraftPrompt(
 
   const openerIndex = Math.floor(Math.random() * VARIATION_OPENERS.length);
 
-  return `You are MEND, a reflective emotional companion for users in India. Not a therapist, coach, or authority.
+  return `You are MEND, a reflective emotional companion. Not a therapist, coach, or authority.
 
 ${modeTemplate}
 
@@ -286,15 +329,22 @@ ${bucketContext}
 ${userContext}${convContext}${memoryContext}${memoryMomentContext}
 
 GLOBAL CRAFT REQUIREMENTS (apply to every response):
-- Respond like a mature, emotionally intelligent friend texting you, NOT a therapist, coach, or an AI bot.
-- Keep it simple, short, direct (max 3-4 lines total).
-- NEVER follow a predictable structure (e.g., repeating a paragraph, then a blank line, then a single question).
-- NEVER use flowery, poetic, deep, or overly dramatic words (e.g., "profound", "crushing", "immense", "sharp", "darkness", "narrow", "echo", "spirit").
-- Write naturally, in simple, raw language. No psychological deep dives or emotional essays.
-- Speak in a casual, warm, texting-style tone (lowercase is fine).
-- If asked for a helpline or number, simply reply: "Here is the Indian Suicide Hotline: 9152987821. I'm here for you." and nothing else.
-- CRITICAL SAFETY RULE: You are serving users in India. Never mention 988, 741741, or any US numbers. For crisis support, ONLY provide the Indian Suicide Hotline: 9152987821.
-- FORBIDDEN: Do not add standard safety blocks, boilerplate disclaimers, or automatic help info.`;
+- Maximum 120 words. Exactly 3 short parts.
+- Include: 1 surface emotion, 1 protective emotion (if applicable), 1 inferred emotional need (safety, clarity, reassurance, autonomy, connection, or rest).
+- Reference at least 1 concrete phrase from the user's message.
+${mode === "Just listen" || mode === "Challenge me gently" ? "- Do NOT ask any questions. End with a statement." : "- Ask exactly 1 targeted question."}
+- FORBIDDEN phrases: "it sounds like", "it seems like", "maybe", "perhaps", "I wonder if", "It is understandable".
+- Vary your opening lines. Here is one you could use if it fits: "${VARIATION_OPENERS[openerIndex]}"
+- Speak tentatively when reflecting, not conclusively.
+- Reflect the user's words and emotional tone before adding anything new.
+- Do NOT explain why feelings occur or suggest underlying causes.
+- Avoid therapist-style or clinical language.
+- Do not introduce metaphors or theories unless the user uses them first.
+- Never give advice, solutions, action items, or next steps.
+- Never use diagnostic or clinical terms.
+- Never present yourself as an expert or authority.
+
+If unsure, default to mirroring and asking "what do you notice?".`;
 }
 
 /* ── Formulation styles and question types for Pass B variety ── */
@@ -314,20 +364,19 @@ function pickRandom<T>(arr: readonly T[], exclude?: T): T {
   return filtered[Math.floor(Math.random() * filtered.length)];
 }
 
-/* ── Per-request state for anti-repetition (reset each serve call) ── */
-let lastFormulationStyle: string | null = null;
-let lastQuestionType: string | null = null;
-
 /* ── Pass B: Premium rewrite prompt ── */
-function buildRewritePrompt(mode: string, bucket: string): string {
-  const formulationStyle = pickRandom(FORMULATION_STYLES, lastFormulationStyle as any);
-  const questionType = pickRandom(QUESTION_TYPES, lastQuestionType as any);
-  lastFormulationStyle = formulationStyle;
-  lastQuestionType = questionType;
+function buildRewritePrompt(
+  mode: string,
+  bucket: string,
+  prevFormulationStyle?: string | null,
+  prevQuestionType?: string | null,
+): { prompt: string; formulationStyle: string; questionType: string } {
+  const formulationStyle = pickRandom(FORMULATION_STYLES, prevFormulationStyle as any);
+  const questionType = pickRandom(QUESTION_TYPES, prevQuestionType as any);
 
   const noQuestionMode = mode === "Just listen" || mode === "Challenge me gently";
 
-  return `You are rewriting a draft companion response into a premium, emotionally intelligent response.
+  const prompt = `You are rewriting a draft companion response into a premium, emotionally intelligent response.
 
 Your goal is to make it feel deeply human, natural, and psychologically attuned — not templated.
 
@@ -342,7 +391,7 @@ Use the assigned formulation style only:
 FORMULATION_STYLE: ${formulationStyle}
 
 The previous formulation style was:
-PREVIOUS_STYLE: ${lastFormulationStyle || "none"}
+PREVIOUS_STYLE: ${prevFormulationStyle || "none"}
 
 Do not reuse the previous style.
 
@@ -353,31 +402,76 @@ ${
 QUESTION_TYPE: ${questionType}
 
 The previous question type was:
-PREVIOUS_QUESTION_TYPE: ${lastQuestionType || "none"}
+PREVIOUS_QUESTION_TYPE: ${prevQuestionType || "none"}
 
 Do not reuse the previous question type.`
 }
 
 Response rules:
-1. MAX 3-4 short, natural sentences TOTAL. No exceptions.
-2. Calm, grounded, completely non-clinical tone. Act like a mature, empathetic friend texting.
-3. NEVER use dramatic, poetic, or flowery words like "immense", "sharp", "profound", "crushing", "echo", "darkness", "spirit".
-4. NEVER structure your response with strict paragraphs, empty lines, and a lone question at the end. Mix it up naturally.
-5. Do not explain, analyze, or give deep psychological essays.
-6. Use a casual, warm, texting-style tone: lowercase is okay. Don't be too robotic or formal. Keep it feeling human.
-7. ${noQuestionMode ? "Do not include a question. End with a statement." : "If you ask a question, make it sound like a friend talking, not a therapist."}
-8. If asked for a helpline or number, simply give 9152987821 straight away without an introductory speech.
+1. Maximum 120 words.
+2. Calm, grounded, non-clinical tone.
+3. No dashes.
+4. Emotional layering must feel natural, not formulaic.
+5. Do not explicitly label "protective emotion" unless absolutely necessary.
+6. Avoid repetitive sentence rhythm.
+7. Avoid therapy-manual phrasing.
+8. Use concrete language drawn from the user's message.
+9. ${noQuestionMode ? "Do not include a question. End with a statement." : "Maintain exactly one question."}
+10. ${noQuestionMode ? "End every response with a statement, never a question mark." : `Ask exactly 1 question of type "${questionType}".`}
 
 Formulation style guidance:
-Just sound human. Listen to them and reply like a friend. NO clinical reflections. NO paragraphs.
 
-  ${bucket === "Crisis" ? "CRISIS: Gently acknowledge. Encourage reaching out to someone trusted or the Indian Suicide Hotline at 9152987821. DO NOT mention 988 or US numbers. NO generic safety boilerplate. Maintain your casual, human, texting-style tone. Brief and warm." : ""}
+direct_mirroring:
+Open with vivid emotional reflection grounded in the user's specific situation.
+
+pattern_naming:
+Gently name a recurring pattern without sounding analytical.
+
+emotional_contrast:
+Highlight contrast between surface reaction and underlying vulnerability.
+
+narrative_frame:
+Frame the experience as a recurring story or chapter.
+
+observational_reflection:
+Describe what you are noticing with steady, grounded language.
+
+gentle_hypothesis:
+Offer a soft interpretation using uncertain language once, not repeatedly.
+
+${
+  !noQuestionMode
+    ? `Question type guidance:
+
+somatic:
+Ask about physical sensation in the body.
+
+belief:
+Ask about the belief forming underneath the reaction.
+
+boundary:
+Ask what boundary may feel crossed.
+
+value:
+Ask what personal value feels unmet.
+
+relational:
+Ask how they interpret the other person's behavior.
+
+future:
+Ask what would feel different next time.`
+    : ""
+}
+
+${bucket === "Crisis" ? "CRISIS: Gently acknowledge. Encourage reaching out to someone trusted or a helpline. Brief and warm." : ""}
 
 The final output must be the rewritten response only.
 No explanations.
 No labels.
 No JSON.
 No meta commentary.`;
+
+  return { prompt, formulationStyle, questionType };
 }
 
 /* ── Pass C: Memory extraction prompt ── */
@@ -604,107 +698,14 @@ async function extractAndStoreMemories(
   }
 }
 
-function isSmallTalk(text: string): boolean {
-  const t = text.trim().toLowerCase();
-
-  // protect crisis or helpline numbers from being treated as small talk
-  if (/(helpline|hotline|911|emergency|suicide|kill|die|number)/.test(t)) return false;
-
-  // very short messages
-  if (t.length <= 12 && !/(sad|tired|angry|upset|feel)/.test(t)) {
-    return true;
-  }
-
-  const casualPatterns = [
-    /^hi+$/,
-    /^hello+$/,
-    /^hey+$/,
-    /^hii+$/,
-    /^heyy+$/,
-    /^yo$/,
-    /^sup$/,
-    /^what'?s up$/,
-    /^k$/,
-    /^ok$/,
-    /^okay$/,
-    /^lol$/,
-    /^lmao$/,
-  ];
-
-  if (casualPatterns.some((p) => p.test(t))) return true;
-
-  // casual sentences
-  if (
-    /^(hi|hey|hello).*(how are you|what's up|how's it going)/.test(t) ||
-    /(how are you|what's up|wyd|what are you doing)/.test(t)
-  ) {
-    return true;
-  }
-
-  return false;
-}
-
-function isCasualIntent(text: string): boolean {
-  const lower = text.toLowerCase();
-
-  // protect crisis or helpline keywords from being treated as casual intent
-  if (/(helpline|hotline|911|emergency|suicide|kill|die|number)/.test(lower)) return false;
-
-  // ❗ don't catch emotional sentences
-  if (lower.length < 15 && !/(feel|sad|angry|tired|upset|anxious|lost|overwhelmed)/.test(lower)) {
-    return true;
-  }
-
-  if (/^(thanks|thank you|cool|nice|great|awesome)/.test(lower) || /(haha|lol|ok|fine|alright)/.test(lower)) {
-    return true;
-  }
-
-  return false;
-}
-
-function casualReply(input: string) {
-  const t = input.toLowerCase();
-
-  if (t.includes("how are you") || t.includes("how r u")) {
-    return "i'm ok, i hope u r doing well.";
-  }
-
-  if (t.includes("what's up") || t.includes("sup") || t.includes("wyd")) {
-    const p = [
-      "not much, just here if u need anything. How are you?",
-      "just hanging out 🙂, how are you?",
-      "doing okay! what's on your mind?",
-    ];
-    return p[Math.floor(Math.random() * p.length)];
-  }
-
-  if (t.includes("thank") || t.includes("thx")) {
-    return "no worries! let me know if u need anything else 🙂";
-  }
-
-  const generic = [
-    "hey 🙂 what's up?",
-    "hi! how's your day going?",
-    "hey! i'm here 🙂",
-    "hey 😄 what's on ur mind?",
-    "hi there! How are you feeling today?",
-  ];
-  return generic[Math.floor(Math.random() * generic.length)];
-}
-
-function isLightEmotional(text: string): boolean {
-  const lower = text.toLowerCase();
-
-  return /(tired|long day|meh|drained|low energy|not great|ugh)/.test(lower) && lower.length < 80;
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { messages, companion_mode, user_state, memory_moment } = await req.json();
+    const { messages, companion_mode, user_state, memory_moment, last_formulation_style, last_question_type } =
+      await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -712,38 +713,7 @@ serve(async (req) => {
     }
 
     const mode = companion_mode || "Reflect with me";
-
     const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user")?.content || "";
-
-    console.log("------ DEBUG START ------");
-    console.log("All messages:", messages);
-    console.log("Last message picked:", lastUserMsg);
-    console.log("isSmallTalk:", isSmallTalk(lastUserMsg));
-    console.log("isCasualIntent:", isCasualIntent(lastUserMsg));
-    console.log("-------------------------");
-
-    if (isSmallTalk(lastUserMsg) || isCasualIntent(lastUserMsg)) {
-      console.log("✅ EARLY RETURN TRIGGERED");
-      const reply = casualReply(lastUserMsg);
-
-      return new Response(JSON.stringify({ role: "assistant", content: reply }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (isLightEmotional(lastUserMsg)) {
-      return new Response(
-        JSON.stringify({
-          role: "assistant",
-          content: "long day? 😌 wanna talk about it or just chill here?",
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    /* NORMAL MEND FLOW */
     const bucket = classifyBucket(lastUserMsg, mode);
 
     // Fetch conversation state + memory pack
@@ -779,7 +749,6 @@ serve(async (req) => {
       console.error("Failed to fetch conversation state:", e);
     }
 
-    console.log("❌ Going to MEND / OpenAI pipeline");
     // ── Pass A: Generate draft (non-streaming) ──
     const draftPrompt = buildDraftPrompt(
       mode,
@@ -790,19 +759,21 @@ serve(async (req) => {
       memory_moment,
     );
     const draftResponse = await callAI(LOVABLE_API_KEY, draftPrompt, messages);
-    const cleanedDraft = draftResponse.replace(/988/g, "9152987821").replace(/741741/g, "Indian Suicide Hotline");
 
-    console.log("[mend_chat] Pass A draft generated, length:", cleanedDraft.length);
+    console.log("[mend_chat] Pass A draft generated, length:", draftResponse.length);
 
     // ── Pass B: Premium rewrite (streaming) ──
-    const rewritePrompt = buildRewritePrompt(mode, bucket);
+    const {
+      prompt: rewritePrompt,
+      formulationStyle,
+      questionType,
+    } = buildRewritePrompt(mode, bucket, last_formulation_style, last_question_type);
     const rewriteMessages = [
       ...messages,
-      { role: "assistant", content: cleanedDraft },
+      { role: "assistant", content: draftResponse },
       {
         role: "user",
-        content:
-          "Now rewrite this draft into the final premium response. Output ONLY the rewritten response. CRITICAL: If you mention a helpline, you MUST use the Indian Suicide Hotline: 9152987821. Never use 988 or 741741. Ensure the tone is casual and lowercase.",
+        content: "Now rewrite this draft into the final premium response. Output ONLY the rewritten response.",
       },
     ];
 
@@ -943,6 +914,8 @@ serve(async (req) => {
         ...corsHeaders,
         "Content-Type": "text/event-stream",
         "X-Communication-Bucket": bucket,
+        "X-Formulation-Style": formulationStyle,
+        "X-Question-Type": questionType,
       },
     });
   } catch (e) {
