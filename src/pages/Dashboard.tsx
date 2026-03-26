@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { 
-  Sun, 
-  MessageCircle, 
-  TrendingUp, 
-  Clock, 
+import {
+  Sun,
+  MessageCircle,
+  TrendingUp,
+  Clock,
   Flame,
   ArrowRight,
   Sparkles,
-  Heart
+  Heart,
+  FileText,
+  Compass,
+  BadgeCheck,
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
@@ -21,24 +24,39 @@ import { supabase } from "@/integrations/supabase/client";
 const placeholderPatterns = [
   "Overthinking",
   "Sleep",
-  "Work pressure", 
+  "Work pressure",
   "Boundaries",
-  "Social drain"
+  "Social drain",
 ];
 
 const deepenItems = [
-  { title: "Prepare Reflection Summary", helper: "Bring a short, editable summary of your recent reflections.", icon: "✨" },
-  { title: "Explore suggested themes", helper: "A few themes showing up recently, gently surfaced.", icon: "🌿" },
-  { title: "Browse professionals", helper: "See options when you feel ready.", icon: "🤝" },
+  {
+    title: "Prepare Reflection Summary",
+    helper: "Bring a short, editable summary of your recent reflections.",
+    icon: FileText,
+  },
+  {
+    title: "Explore suggested themes",
+    helper: "A few themes showing up recently, gently surfaced.",
+    icon: Compass,
+  },
+  {
+    title: "Browse professionals",
+    helper: "See options when you feel ready.",
+    icon: BadgeCheck,
+  },
 ];
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const firstName = user?.user_metadata?.full_name?.split(" ")[0] || 
-                   user?.email?.split("@")[0] || 
-                   "there";
+  const firstName =
+    user?.user_metadata?.full_name?.split(" ")[0] ||
+    user?.email?.split("@")[0] ||
+    "there";
 
-  const [signalLine, setSignalLine] = useState<string>("This space is here whenever you feel ready.");
+  const [signalLine, setSignalLine] = useState<string>(
+    "This space is here whenever you feel ready.",
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -58,9 +76,14 @@ export default function Dashboard() {
           const t = s.context.toLowerCase().trim();
           freq.set(t, (freq.get(t) || 0) + 1);
         }
-        const top = [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([t]) => t);
+        const top = [...freq.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 2)
+          .map(([t]) => t);
         if (top.length >= 2) {
-          setSignalLine(`Recently, ${top[0]} and ${top[1]} have appeared in your reflections.`);
+          setSignalLine(
+            `Recently, ${top[0]} and ${top[1]} have appeared in your reflections.`,
+          );
         } else if (top.length === 1) {
           setSignalLine(`Recently, ${top[0]} has appeared in your reflections.`);
         }
@@ -95,7 +118,7 @@ export default function Dashboard() {
                     <div className="flex flex-wrap gap-3">
                       <Link to="/checkin">
                         <Button className="gradient-lilac text-primary-foreground border-0 shadow-soft hover:shadow-hover transition-all active:scale-[0.97]">
-                          Start today's check-in
+                          Start today&apos;s check-in
                           <ArrowRight className="w-4 h-4 ml-1" />
                         </Button>
                       </Link>
@@ -193,7 +216,7 @@ export default function Dashboard() {
               <CardContent className="pt-0">
                 <div className="flex flex-wrap gap-2">
                   {placeholderPatterns.map((pattern) => (
-                    <Badge 
+                    <Badge
                       key={pattern}
                       variant="secondary"
                       className="bg-lilac-50 text-foreground/80 hover:bg-lilac-100 rounded-full px-3 py-1 text-sm font-normal"
@@ -212,34 +235,43 @@ export default function Dashboard() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
           >
-            <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-soft rounded-2xl">
+            <Card className="bg-card/85 backdrop-blur-sm border-border/40 shadow-soft rounded-2xl">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-serif font-medium flex items-center gap-2">
-                  <Heart className="w-4 h-4 text-primary" />
+                <CardTitle className="text-lg font-serif font-medium flex items-center gap-2 text-foreground/90">
+                  <Heart className="w-4 h-4 text-primary/80" />
                   Deepen your reflection
                 </CardTitle>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-sm text-muted-foreground/90 mt-1 leading-relaxed max-w-md">
                   When you feel ready, sit with someone trained to listen.
                 </p>
               </CardHeader>
-              <CardContent className="pt-0 space-y-2">
-                <p className="text-xs text-muted-foreground/70 italic mb-3">
+              <CardContent className="pt-0 space-y-3">
+                <p className="text-xs text-muted-foreground/70 italic mb-4 border-l-2 border-primary/15 pl-3">
                   {signalLine}
                 </p>
                 {deepenItems.map((item, index) => (
-                  <div 
+                  <div
                     key={index}
-                    className="flex items-start gap-3 p-3 rounded-xl bg-muted/30"
+                    className="flex items-start gap-4 p-4 rounded-2xl bg-gradient-to-r from-muted/35 to-card border border-border/40 shadow-[0_1px_0_rgba(255,255,255,0.45)_inset]"
                   >
-                    <span className="text-lg mt-0.5">{item.icon}</span>
-                    <div>
-                      <span className="text-sm font-medium text-foreground">{item.title}</span>
-                      <p className="text-xs text-muted-foreground mt-0.5">{item.helper}</p>
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-lilac-100 to-mint-100 border border-border/40 flex items-center justify-center shrink-0">
+                      <item.icon className="w-4 h-4 text-primary/80" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-sm font-medium text-foreground/90">
+                        {item.title}
+                      </span>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                        {item.helper}
+                      </p>
                     </div>
                   </div>
                 ))}
                 <Link to="/sessions" className="block pt-2">
-                  <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground">
+                  <Button
+                    variant="ghost"
+                    className="w-full text-muted-foreground/90 hover:text-foreground rounded-2xl py-6 bg-gradient-to-r from-lilac-50/60 to-mint-50/60 border border-border/40 hover:bg-gradient-to-r hover:from-lilac-100/70 hover:to-mint-100/70 transition-all"
+                  >
                     Open Deepen Your Reflection
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
