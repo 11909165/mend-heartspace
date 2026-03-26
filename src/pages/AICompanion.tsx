@@ -19,6 +19,7 @@ import { usePatternSignals } from "@/hooks/usePatternSignals";
 import { useUserPhase } from "@/hooks/useUserPhase";
 import { getCompanionWelcomeText } from "@/lib/phaseCopy";
 import { streamChat } from "@/lib/streamChat";
+import { getGreetingReply, isGreetingOnly } from "@/lib/greeting";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getTimeDivider } from "@/lib/conversationDividers";
@@ -153,6 +154,59 @@ export default function AICompanion() {
     if (!content.trim() || isDisabled || isLoading) return;
 
     const trimmedContent = content.trim();
+    const greetingOnly = isGreetingOnly(trimmedContent);
+    const greetingReply = getGreetingReply();
+
+    const appendAssistantReply = async (assistantContent: string) => {
+      const assistantMessage: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        content: assistantContent,
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+
+      if (isAuthenticated && user?.id) {
+        try {
+          await supabase.from("mend_messages").insert({
+            user_id: user.id,
+            role: "assistant",
+            content: assistantContent,
+            experience_mode: mode,
+            communication_bucket: greetingOnly ? "Greeting" : null,
+          });
+        } catch (error) {
+          console.error("Failed to save greeting reply:", error);
+        }
+      }
+    };
+
+    if (greetingOnly) {
+      const userMessage: ChatMessage = {
+        id: `user-${Date.now()}`,
+        role: "user",
+        content: trimmedContent,
+      };
+
+      if (isAuthenticated && user?.id) {
+        try {
+          await supabase.from("mend_messages").insert({
+            user_id: user.id,
+            role: "user",
+            content: trimmedContent,
+            experience_mode: mode,
+          });
+        } catch (error) {
+          console.error("Failed to save greeting message:", error);
+        }
+      }
+
+      setMessages((prev) => [...prev, userMessage]);
+      setMessage("");
+      await appendAssistantReply(greetingReply);
+      setShowRedirectMessage(false);
+      return;
+    }
     
     if (!isAuthenticated) {
       const userMessage: ChatMessage = {

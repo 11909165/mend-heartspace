@@ -29,6 +29,49 @@ const CRISIS_KEYWORDS = [
   "better off dead",
 ];
 
+const GREETING_PATTERNS = [
+  /^(hi|hello|hey|hiya|howdy)$/i,
+  /^(hi|hello|hey|hiya|howdy)\s+there$/i,
+  /^good\s+(morning|afternoon|evening)$/i,
+];
+
+function isGreetingOnly(input: string): boolean {
+  const normalized = input
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s']/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized) return false;
+  const words = normalized.split(" ");
+  if (words.length > 3) return false;
+
+  return GREETING_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
+function createSseResponse(content: string, bucket: string): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(
+        encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`),
+      );
+      controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "text/event-stream",
+      "X-Communication-Bucket": bucket,
+      "X-Formulation-Style": "",
+      "X-Question-Type": "",
+    },
+  });
+}
+
 function detectCrisis(text: string): boolean {
   const lower = text.toLowerCase();
   return CRISIS_KEYWORDS.some((kw) => lower.includes(kw));
@@ -714,6 +757,11 @@ serve(async (req) => {
 
     const mode = companion_mode || "Reflect with me";
     const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user")?.content || "";
+
+    if (isGreetingOnly(lastUserMsg)) {
+      return createSseResponse("Hi, I’m glad you’re here. How are you doing today?", "Greeting");
+    }
+
     const bucket = classifyBucket(lastUserMsg, mode);
 
     // Fetch conversation state + memory pack
