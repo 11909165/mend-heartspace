@@ -27,6 +27,12 @@ const CRISIS_KEYWORDS = [
   "hurt myself",
   "not worth living",
   "better off dead",
+  "want to end my life",
+  "thinking about ending everything",
+  "don't want to be here anymore",
+  "need to talk to someone about suicide",
+  "can't go on anymore",
+  "feeling like ending my life",
 ];
 
 const GREETING_PATTERNS = [
@@ -328,7 +334,7 @@ function buildDraftPrompt(
   const modeTemplate = MODE_TEMPLATES[mode] || MODE_TEMPLATES["Reflect with me"];
   const bucketContext =
     bucket === "Crisis"
-      ? "CRISIS OVERRIDE: Gently acknowledge what they shared. Encourage reaching out to someone they trust or a helpline. Be present, not prescriptive. Keep your response brief and warm."
+      ? "CRISIS OVERRIDE: Gently acknowledge what they shared. Encourage reaching out to someone they trust or the Indian Suicide Hotline at 9152987821. Be present, not prescriptive. Keep your response brief and warm."
       : `Communication bucket: ${bucket}`;
 
   let userContext = "";
@@ -438,17 +444,16 @@ PREVIOUS_STYLE: ${prevFormulationStyle || "none"}
 
 Do not reuse the previous style.
 
-${
-  noQuestionMode
-    ? ""
-    : `The assigned question type is:
+${noQuestionMode
+      ? ""
+      : `The assigned question type is:
 QUESTION_TYPE: ${questionType}
 
 The previous question type was:
 PREVIOUS_QUESTION_TYPE: ${prevQuestionType || "none"}
 
 Do not reuse the previous question type.`
-}
+    }
 
 Response rules:
 1. Maximum 120 words.
@@ -482,9 +487,8 @@ Describe what you are noticing with steady, grounded language.
 gentle_hypothesis:
 Offer a soft interpretation using uncertain language once, not repeatedly.
 
-${
-  !noQuestionMode
-    ? `Question type guidance:
+${!noQuestionMode
+      ? `Question type guidance:
 
 somatic:
 Ask about physical sensation in the body.
@@ -503,10 +507,10 @@ Ask how they interpret the other person's behavior.
 
 future:
 Ask what would feel different next time.`
-    : ""
-}
+      : ""
+    }
 
-${bucket === "Crisis" ? "CRISIS: Gently acknowledge. Encourage reaching out to someone trusted or a helpline. Brief and warm." : ""}
+${bucket === "Crisis" ? "CRISIS: Gently acknowledge. Encourage reaching out to someone trusted or the Indian Suicide Hotline at 9152987821. Brief and warm." : ""}
 
 The final output must be the rewritten response only.
 No explanations.
