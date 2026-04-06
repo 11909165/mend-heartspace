@@ -54,6 +54,7 @@ export default function AICompanion() {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showThinkingBubble, setShowThinkingBubble] = useState(false);
   const [isFetchingHistory, setIsFetchingHistory] = useState(true);
   const [showRedirectMessage, setShowRedirectMessage] = useState(false);
   const [isDisabled, setIsDisabled] = useState(false);
@@ -165,6 +166,7 @@ export default function AICompanion() {
       setMessages(prev => [...prev, userMessage]);
       setMessage("");
       setIsLoading(true);
+      setShowThinkingBubble(true);
       setIsDisabled(true);
 
       const apiMessages = [...messages, userMessage].map(m => ({
@@ -182,6 +184,7 @@ export default function AICompanion() {
           lastFormulationStyle,
           lastQuestionType,
           onDelta: (chunk) => {
+            setShowThinkingBubble(false);
             assistantContent += chunk;
             setMessages(prev => {
               const last = prev[prev.length - 1];
@@ -197,17 +200,20 @@ export default function AICompanion() {
             console.log("[MEND turn]", { experience_mode: mode, communication_bucket: result.communicationBucket });
             if (result.formulationStyle) setLastFormulationStyle(result.formulationStyle);
             if (result.questionType) setLastQuestionType(result.questionType);
+            setShowThinkingBubble(false);
             setIsLoading(false);
             setTimeout(() => setShowRedirectMessage(true), 800);
           },
           onError: (error) => {
             toast.error(error);
+            setShowThinkingBubble(false);
             setIsLoading(false);
           },
         });
       } catch (error) {
         console.error("Error getting response:", error);
         toast.error("Something went wrong. Please try again.");
+        setShowThinkingBubble(false);
         setIsLoading(false);
       }
       return;
@@ -266,6 +272,7 @@ export default function AICompanion() {
       };
 
       setMessages(prev => [...prev, userMessage]);
+      setShowThinkingBubble(true);
 
       const apiMessages = [...messages, userMessage].map(m => ({
         role: m.role,
@@ -281,10 +288,11 @@ export default function AICompanion() {
         userState: userState || undefined,
         memoryMoment: memoryMoment,
         lastFormulationStyle,
-        lastQuestionType,
-        onDelta: (chunk) => {
-          assistantContent += chunk;
-          setMessages(prev => {
+          lastQuestionType,
+          onDelta: (chunk) => {
+            setShowThinkingBubble(false);
+            assistantContent += chunk;
+            setMessages(prev => {
             const last = prev[prev.length - 1];
             if (last?.role === "assistant" && last.id === tempAssistantId) {
               return prev.map((m, i) =>
@@ -294,12 +302,13 @@ export default function AICompanion() {
             return [...prev, { id: tempAssistantId, role: "assistant", content: assistantContent }];
           });
         },
-        onDone: async (result) => {
-          console.log("[MEND turn]", { experience_mode: mode, communication_bucket: result.communicationBucket });
-          if (result.formulationStyle) setLastFormulationStyle(result.formulationStyle);
-          if (result.questionType) setLastQuestionType(result.questionType);
+          onDone: async (result) => {
+            console.log("[MEND turn]", { experience_mode: mode, communication_bucket: result.communicationBucket });
+            if (result.formulationStyle) setLastFormulationStyle(result.formulationStyle);
+            if (result.questionType) setLastQuestionType(result.questionType);
+            setShowThinkingBubble(false);
 
-          const { data: assistantMsgData, error: assistantMsgError } = await supabase
+            const { data: assistantMsgData, error: assistantMsgError } = await supabase
             .from("mend_messages")
             .insert({
               user_id: user!.id,
@@ -345,12 +354,14 @@ export default function AICompanion() {
         },
         onError: (error) => {
           toast.error(error);
+          setShowThinkingBubble(false);
           setIsLoading(false);
         },
       });
     } catch (error) {
       console.error("Error in chat flow:", error);
       toast.error(error instanceof Error ? error.message : "Something went wrong");
+      setShowThinkingBubble(false);
       setIsLoading(false);
     }
   }, [isAuthenticated, isDisabled, isLoading, messages, user, mode, userState, evaluateReflection]);
@@ -544,27 +555,24 @@ export default function AICompanion() {
                 </AnimatePresence>
 
                 <AnimatePresence>
-                  {isLoading && (
+                  {showThinkingBubble && (
                     <motion.div
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
+                      exit={{ opacity: 0, y: -8 }}
                       className="flex justify-start"
                     >
                       <div className="bg-card shadow-soft border border-border rounded-2xl rounded-bl-md px-4 py-3">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-2">
                           <div className="w-6 h-6 rounded-lg gradient-lilac flex items-center justify-center">
                             <Sparkles className="w-3 h-3 text-primary-foreground" />
                           </div>
-                          <span className="text-xs font-medium text-muted-foreground">MEND</span>
-                        </div>
-                        <div className="flex items-center gap-2">
                           <div className="flex gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-lilac-300 animate-pulse" style={{ animationDelay: "0ms" }} />
                             <span className="w-2 h-2 rounded-full bg-lilac-300 animate-pulse" style={{ animationDelay: "150ms" }} />
                             <span className="w-2 h-2 rounded-full bg-lilac-300 animate-pulse" style={{ animationDelay: "300ms" }} />
                           </div>
-                          <span className="text-sm text-muted-foreground">MEND is thinking…</span>
+                          <span className="text-sm text-muted-foreground">MEND is thinking...</span>
                         </div>
                       </div>
                     </motion.div>
