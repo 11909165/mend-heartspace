@@ -435,10 +435,10 @@ Premium Rules:
 5. Emotional awareness must feel organic and integrated. No "textbook" format.
 6. Use plain, direct, human language. Use concrete words from the user's message.
 7. ${noQuestionMode || bucket === "Crisis" ? "End with a statement or safety question." : `Ask a question ONLY when it naturally drives the conversation forward. Do not force it.`}
-
+ 8. NO dashes (--) or trailing special characters.
+ 
 Style Guide:
-- ${formulationStyle}: ${
-    formulationStyle === "direct_mirroring"
+- ${formulationStyle}: ${formulationStyle === "direct_mirroring"
       ? "Open with vivid emotional reflection."
       : formulationStyle === "pattern_naming"
         ? "Gently name a recurring pattern."
@@ -449,7 +449,7 @@ Style Guide:
             : formulationStyle === "observational_reflection"
               ? "Describe what you notice groundedly."
               : "Offer a soft interpretation using uncertain language."
-  }
+    }
 `;
 }
 
@@ -520,17 +520,16 @@ PREVIOUS_STYLE: ${prevFormulationStyle || "none"}
 
 Do not reuse the previous style.
 
-${
-  noQuestionMode
-    ? ""
-    : `The assigned question type is:
+${noQuestionMode
+      ? ""
+      : `The assigned question type is:
 QUESTION_TYPE: ${questionType}
 
 The previous question type was:
 PREVIOUS_QUESTION_TYPE: ${prevQuestionType || "none"}
 
 Do not reuse the previous question type.`
-}
+    }
 
 Response rules:
 1. Maximum 120 words.
@@ -564,9 +563,8 @@ Describe what you are noticing with steady, grounded language.
 gentle_hypothesis:
 Offer a soft interpretation using uncertain language once, not repeatedly.
 
-${
-  !noQuestionMode
-    ? `Question type guidance:
+${!noQuestionMode
+      ? `Question type guidance:
 
 somatic:
 Ask about physical sensation in the body.
@@ -585,8 +583,8 @@ Ask how they interpret the other person's behavior.
 
 future:
 Ask what would feel different next time.`
-    : ""
-}
+      : ""
+    }
 
 ${bucket === "Crisis" ? "CRISIS: YOU MUST include the Indian Suicide Hotline at 9152987821. DO NOT mention 988. Gently acknowledge what they shared. Brief and warm." : ""}
 
