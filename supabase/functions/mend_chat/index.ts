@@ -117,18 +117,19 @@ function classifyBucket(userText: string, mode: string): string {
 /* ── Mode-specific system templates ── */
 const MODE_TEMPLATES: Record<string, string> = {
   "Reflect with me": `MODE: Reflect with me
-Goal: Simple, grounded accuracy.
+Goal: Deep insight, Simple, grounded accuracy, plain delivery.
 Tone Guidelines (CRITICAL):
-- Use plain, everyday language. No poetic or metaphorical phrasing.
-- ABSOLUTELY NO imagery: "heavy shield", "walls", "armor", "waves", "terrain", "shielding".
-- Speak like a clear, emotionally aware human, not a writer or therapist.
-- accurate > impressive | clear > deep | grounded > abstract
-- If user says little → keep response light and minimal. No dramatic framing.
+- Name the core struggle or emotion accurately (e.g. regret, shame, fear) but use plain, everyday words.
+- ABSOLUTELY NO clinical or dramatic words: "oscillating", "self-compassion", "self-loathing", "burden", "profound", "layered", "disorientation", "processing", "heavy shield", "walls", "armor", "waves", "terrain", "shielding".
+- Use direct, grounded sentences. Use plain, everyday language.
+- Example: "That regret sounds heavy." NOT "You are carrying a deep emotional burden."
+- If the user says little, respond even more briefly. (1 sentence is often enough).
 
 Structure:
-1. Clean Formulation: "Because [event], you're feeling [emotion], and underneath there's some [emotion] too."
-2. One simple, direct curiosity question.
-Tone: Simple, direct, steady.`,
+1. Clean Formulation
+2. One integrated block of 1-3 short sentences total.
+3. Blend the observation and any simple question naturally. No parts.
+Tone: Simple, directly human, mature friend.`,
 
   "Sit with me": `MODE: Sit with me
 Goal: Containment + presence.
@@ -427,13 +428,13 @@ Use this formulation style: ${formulationStyle}
 ${noQuestionMode ? "" : `Use this question type: ${questionType}`}
 
 Premium Rules:
-1. Maximum 120 words.
-2. Calm, grounded, non-clinical tone.
-3. No dashes.
-4. Emotional layering must feel natural, not formulaic. 
-5. Do not explicitly label "protective emotion" unless absolutely necessary.
-6. Avoid repetitive sentence rhythm. Use concrete language from user's message.
-7. ${noQuestionMode || bucket === "Crisis" ? "End with a statement or safety question." : `Ask exactly 1 question of type "${questionType}".`}
+1. Maximum 100 words. Keep it extremely concise (1-3 sentences total is ideal).
+2. NO repetitive sentence structures. NEVER start responses with "Because you..." or "It sounds like...".
+3. NO clinical or dramatic vocabulary: BANNED: "oscillating", "self-compassion", "self-loathing", "processing", "burden", "profound", "layered", "spectrum", "dynamic", "heavy shield", "walls", "armor", "waves", "terrain", "shielding".
+4. Calm, grounded, non-clinical tone.
+5. Emotional awareness must feel organic and integrated. No "textbook" format.
+6. Use plain, direct, human language. Use concrete words from the user's message.
+7. ${noQuestionMode || bucket === "Crisis" ? "End with a statement or safety question." : `Ask a question ONLY when it naturally drives the conversation forward. Do not force it.`}
 
 Style Guide:
 - ${formulationStyle}: ${
