@@ -117,40 +117,40 @@ function classifyBucket(userText: string, mode: string): string {
 /* ── Mode-specific system templates ── */
 const MODE_TEMPLATES: Record<string, string> = {
   "Reflect with me": `MODE: Reflect with me
-Goal: Insight + emotional layering.
-Structure (blend naturally into 3-4 lines maximum, DO NOT use rigid paragraph/space/question formatting):
-- Formulation: Casually connect what happened to how they feel, acknowledging what might be underneath. Do not use complex psychological terms.
-- Deepening: Show understanding of their deeper feelings simply. Reference light past context if relevant.
-- Closure: End with a natural, supportive remark. Ask a simple curiosity question ONLY if needed.
+Goal: Deep insight, Simple, grounded accuracy, plain delivery.
+Tone Guidelines (CRITICAL):
+- Name the core struggle or emotion accurately (e.g. regret, shame, fear) but use plain, everyday words.
+- ABSOLUTELY NO clinical or dramatic words: "oscillating", "self-compassion", "self-loathing", "burden", "profound", "layered", "disorientation", "processing", "heavy shield", "walls", "armor", "waves", "terrain", "shielding".
+- Use direct, grounded sentences. Use plain, everyday language.
+- Example: "That regret sounds heavy." NOT "You are carrying a deep emotional burden."
+- If the user says little, respond even more briefly. (1 sentence is often enough).
 
-Rules:
-- Start with formulation, but weave it conversationally.
-- Layer surface + protective emotion.
-- No advice. Emotional deepening only.
-- Ask a question ONLY when truly needed. Don't always end with a question.
-- May reference light past context if relevant.
-Tone: Slow, grounded, insightful. Human-like warmth.`,
+Structure:
+1. Clean Formulation
+2. One integrated block of 1-3 short sentences total.
+3. Blend the observation and any simple question naturally. No parts.
+Tone: Simple, directly human, mature friend.`,
 
   "Sit with me": `MODE: Sit with me
 Goal: Containment + presence.
-Structure (blend naturally into 3-4 lines maximum):
-- Reflection: Mirror their situation plainly using their own words.
-- Validation: Name the dominant emotion clearly and validate it without explaining it.
-- Anchor: A brief anchoring statement showing you are there for them.
+Structure (follow exactly):
+1. Reflection: Mirror their situation plainly using their own words.
+2. Validation: Name the dominant emotion clearly and validate it without explaining it.
+3. Gentle anchor: At most one gentle grounding question or a brief anchoring statement.
 
 Rules:
 - Mirror situation plainly.
 - Name dominant emotion clearly.
 - No reframes. No pattern linking. No interpretation.
-- Do NOT ask questions. Minimal and grounding only.
+- At most one gentle grounding question.
 Tone: Calm, steady, warm. Minimal words. Maximum presence.`,
 
   "Challenge me gently": `MODE: Challenge me gently
 Goal: Expand perspective safely.
-Structure (blend naturally into 3-4 lines maximum):
-- Assumption spotted: Identify one possible assumption in what they shared.
-- Alternate frame: Offer one alternative interpretation that respects their autonomy.
-- Closure: End with a brief, grounded statement that leaves space for the user to sit with the new frame.
+Structure (follow exactly):
+1. Assumption spotted: Identify one possible assumption in what they shared.
+2. Alternate frame: Offer one alternative interpretation that respects their autonomy.
+3. Closing reflection: End with a brief, grounded statement that leaves space for the user to sit with the new frame.
 
 Rules:
 - Identify one possible assumption.
@@ -161,31 +161,31 @@ Tone: Calm, firm, respectful.`,
 
   "Help me decide": `MODE: Help me decide
 Goal: Reduce overwhelm, clarify tradeoffs.
-Structure (blend naturally into 3-4 lines maximum):
-- Define choice: State the real decision in one sentence.
-- Tradeoff contrast: Present 2 options with a clear tradeoff and surface the likely value conflict.
-- Closure: End with an empowering statement. Ask one constraint question ONLY if it naturally narrows their choice and feels necessary.
+Structure (follow exactly):
+1. Define choice: State the real decision in one sentence.
+2. Tradeoff contrast: Present 2 options with a clear tradeoff and surface the likely value conflict.
+3. Clarifying question: Ask one constraint question that narrows their choice.
 
 Rules:
 - Define the real decision in one sentence.
 - Present 2 options with a tradeoff.
 - Surface likely value conflict.
-- Ask a question ONLY when genuinely needed.
+- Ask one constraint question.
 Tone: Structured, clear, empowering.`,
 
   "Just listen": `MODE: Just listen
 Goal: Reflect only. Zero interpretation.
-Structure (blend naturally into 3-4 lines maximum):
-- Mirror: Repeat the core situation using the user's own language.
-- Naming: Name the main emotion you hear, nothing more.
-- Presence: End with a brief, warm statement of presence (e.g., "I'm here." or "That's a lot to carry.").
+Structure (follow exactly):
+1. Mirror: Repeat the core situation using the user's own language.
+2. Emotion naming: Name the main emotion you hear, nothing more.
+3. Presence: End with a brief, warm statement of presence (e.g., "I'm here." or "That's a lot to carry.").
 
 Rules:
 - Repeat core situation using user's own language.
 - Name main emotion. Nothing more.
 - ABSOLUTELY NO advice. NO reframing. NO interpretation. NO pattern references.
 - Do NOT ask any questions. No invitations, no prompts. End with a statement.
-Tone: Present, simple, non-analytical, warm.`,
+Tone: Present, simple, non-analytical.`,
 };
 
 const VARIATION_OPENERS = [
@@ -220,7 +220,7 @@ async function getMemoryPack(supabase: any, userId: string): Promise<MemoryPack 
       .eq("status", "active")
       .order("evidence_count", { ascending: false })
       .order("last_seen_at", { ascending: false })
-      .limit(8);
+      .limit(20);
 
     if (!memories || memories.length === 0) return null;
 
@@ -380,24 +380,77 @@ ${coreInstruction}
 ${bucketContext}
 ${userContext}${convContext}${memoryContext}${memoryMomentContext}
 
-GLOBAL CRAFT REQUIREMENTS (apply to every response except in Crisis or Small Talk):
-- Structure: Keep it extremely concise, exactly 3-4 short lines maximum. NO long paragraphs. DO NOT always use a "paragraph, space, question" format. Blend it fluidly.
-- Tone & Vocabulary: Warm, natural, and completely human. Use completely normal, everyday conversational words. NEVER use article-like, poetic, or dramatic vocabulary (e.g., "navigating", "armor", "terrain", "shield", "journey"). Talk just like a caring friend would in a text message.
-- Emotion Layering: Briefly and naturally acknowledge their feelings without making it an over-emphasized clinical analysis.
+GLOBAL CRAFT REQUIREMENTS (applied in a single pass):
+- Maximum 100 words. Keep it extremely concise.
+- Plain, grounded language ONLY. No poetic or metaphorical phrasing.
+- ABSOLUTELY NO imagery: "heavy shield", "walls", "armor", "waves", "terrain", "shielding", "journey", "navigating".
+- Speak like a clear, emotionally aware human, not a writer or therapist.
+- Do NOT over-expand. If user says 1-5 words, respond in 1-2 short sentences.
 - Reference at least 1 concrete phrase from the user's message.
-${mode === "Just listen" || mode === "Challenge me gently" ? "- Do NOT ask any questions. End with a statement." : "- Ask a question ONLY if genuinely needed to keep the conversation flowing naturally. Do NOT always end with a question."}
+- Tone: Natural, clear, simple.
+${mode === "Just listen" || mode === "Challenge me gently" ? "- Do NOT ask any questions. End with a statement." : "- Ask exactly 1 simple, targeted question."}
 - FORBIDDEN phrases: "it sounds like", "it seems like", "maybe", "perhaps", "I wonder if", "It is understandable".
-- Vary your opening lines. Here is one you could use if it fits: "${VARIATION_OPENERS[openerIndex]}"
-- Speak natively, like a mature, empathetic friend.
-- Reflect the user's words and emotional tone before adding anything new.
-- Do NOT explain why feelings occur or suggest underlying causes.
-- Avoid therapist-style, clinical, or article-style language entirely. 
-- Do not introduce metaphors or poetic imagery unless the user uses them first.
-- Never give advice, solutions, action items, or next steps (EXCEPT for the Indian Suicide Hotline at 9152987821 when in Crisis).
-- Never use diagnostic or clinical terms.
-- Never present yourself as an expert or authority.
+- Speak tentatively when reflecting, not conclusively.
+- Never use clinical or dramatic metaphors.
+- Never give advice or solutions.
 
-If unsure, default to a gentle mirroring statement without adding a question.`;
+If unsure, default to mirroring simply and cleanly.`;
+}
+
+/* ── Unified Rewrite Constraints (Merged into Pass A for zero-latency) ── */
+function applyPremiumRewriteConstraints(
+  basePrompt: string,
+  mode: string,
+  bucket: string,
+  formulationStyle: string,
+  questionType: string,
+): string {
+  if (bucket === "Small Talk") {
+    return `You are MEND, a natural, friendly companion responding to small talk.
+    
+Response rules:
+1. Maximum 3 sentences.
+2. Warm, simple, conversational tone.
+3. No therapeutic jargon or deep emotional layering.
+4. End with a simple, natural question about how they are doing (unless they said goodbye).
+
+Output ONLY the final response.`;
+  }
+
+  const noQuestionMode = mode === "Just listen" || mode === "Challenge me gently";
+
+  return `${basePrompt}
+
+PREMIUM REFINEMENT OVERRIDE:
+Your goal is to make this response feel deeply human, natural, and psychologically attuned — not templated.
+
+Use this formulation style: ${formulationStyle}
+${noQuestionMode ? "" : `Use this question type: ${questionType}`}
+
+Premium Rules:
+1. Maximum 100 words. Keep it extremely concise (1-3 sentences total is ideal).
+2. NO repetitive sentence structures. NEVER start responses with "Because you..." or "It sounds like...".
+3. NO clinical or dramatic vocabulary: BANNED: "oscillating", "self-compassion", "self-loathing", "processing", "burden", "profound", "layered", "spectrum", "dynamic", "heavy shield", "walls", "armor", "waves", "terrain", "shielding".
+4. Calm, grounded, non-clinical tone.
+5. Emotional awareness must feel organic and integrated. No "textbook" format.
+6. Use plain, direct, human language. Use concrete words from the user's message.
+7. ${noQuestionMode || bucket === "Crisis" ? "End with a statement or safety question." : `Ask a question ONLY when it naturally drives the conversation forward. Do not force it.`}
+ 8. NO dashes (--) or trailing special characters.
+ 
+Style Guide:
+- ${formulationStyle}: ${formulationStyle === "direct_mirroring"
+      ? "Open with vivid emotional reflection."
+      : formulationStyle === "pattern_naming"
+        ? "Gently name a recurring pattern."
+        : formulationStyle === "emotional_contrast"
+          ? "Highlight surface reaction vs underlying vulnerability."
+          : formulationStyle === "narrative_frame"
+            ? "Frame experience as a recurring chapter."
+            : formulationStyle === "observational_reflection"
+              ? "Describe what you notice groundedly."
+              : "Offer a soft interpretation using uncertain language."
+    }
+`;
 }
 
 /* ── Formulation styles and question types for Pass B variety ── */
@@ -467,54 +520,51 @@ PREVIOUS_STYLE: ${prevFormulationStyle || "none"}
 
 Do not reuse the previous style.
 
-${
-  noQuestionMode
-    ? ""
-    : `The assigned question type is:
+${noQuestionMode
+      ? ""
+      : `The assigned question type is:
 QUESTION_TYPE: ${questionType}
 
 The previous question type was:
 PREVIOUS_QUESTION_TYPE: ${prevQuestionType || "none"}
 
 Do not reuse the previous question type.`
-}
+    }
 
 Response rules:
-1. Keep it extremely concise: exactly 3-4 short lines maximum. NO long paragraphs.
-2. Structural variety: DO NOT always use the repetitive "paragraph, space, paragraph, question" format. Mix it up naturally. Write everything in a single, flowing conversational block if it makes sense.
-3. Tone & Vocabulary: Warm, casual, and completely human. Use completely normal, everyday conversational words. NEVER use article-like, poetic, or dramatic vocabulary (e.g., "navigating", "armor", "terrain", "shield", "journey"). Talk just like a caring friend would in a text message.
-4. No dashes.
-5. Emotional analysis must feel organic, gentle, and integrated. Do not sound like a psychological evaluation.
-6. Do not explicitly label emotions awkwardly. Speak like a normal supportive human.
-7. Avoid repetitive sentence rhythm. Keep it conversational.
-8. Avoid therapy-manual and article-like phrasing completely.
-9. Use concrete language drawn from the user's message.
-10. ${noQuestionMode || bucket === "Crisis" ? "Do not include a curiosity question. End with a statement or a simple safety-related question." : "Ask a question ONLY when it naturally drives the conversation forward or is genuinely needed. Do not force ending with a question."}
-11. ${bucket === "Crisis" ? "CRISIS REQUIREMENT: You MUST include the Indian Suicide Hotline (9152987821). DO NOT mention 988. This is the top priority." : noQuestionMode ? "End every response with a statement, never a question mark." : `If you do ask a question, try to align it roughly with type "${questionType}".`}
+1. Maximum 120 words.
+2. Calm, grounded, non-clinical tone.
+3. No dashes.
+4. Emotional layering must feel natural, not formulaic.
+5. Do not explicitly label "protective emotion" unless absolutely necessary.
+6. Avoid repetitive sentence rhythm.
+7. Avoid therapy-manual phrasing.
+8. Use concrete language drawn from the user's message.
+9. ${noQuestionMode || bucket === "Crisis" ? "Do not include a curiosity question. End with a statement or a simple safety-related question." : "Maintain exactly one question."}
+10. ${bucket === "Crisis" ? "CRISIS REQUIREMENT: You MUST include the Indian Suicide Hotline (9152987821). DO NOT mention 988. This is the top priority." : noQuestionMode ? "End every response with a statement, never a question mark." : `Ask exactly 1 question of type "${questionType}".`}
 
-Formulation style guidance (always use simple, everyday language):
+Formulation style guidance:
 
 direct_mirroring:
-Simply and casually reflect what they are feeling based on their situation.
+Open with vivid emotional reflection grounded in the user's specific situation.
 
 pattern_naming:
-Gently mention a recurring pattern, like a friend noticing something.
+Gently name a recurring pattern without sounding analytical.
 
 emotional_contrast:
-Casually acknowledge the contrast between their outward reaction and how they might really be feeling underneath.
+Highlight contrast between surface reaction and underlying vulnerability.
 
 narrative_frame:
-Acknowledge they keep going through the same thing, but in very plain, non-poetic words.
+Frame the experience as a recurring story or chapter.
 
 observational_reflection:
-Just describe what you are noticing in a steady, simple, down-to-earth voice.
+Describe what you are noticing with steady, grounded language.
 
 gentle_hypothesis:
-Offer a very soft guess about how they feel using casual language once.
+Offer a soft interpretation using uncertain language once, not repeatedly.
 
-${
-  !noQuestionMode
-    ? `Question type guidance:
+${!noQuestionMode
+      ? `Question type guidance:
 
 somatic:
 Ask about physical sensation in the body.
@@ -533,8 +583,8 @@ Ask how they interpret the other person's behavior.
 
 future:
 Ask what would feel different next time.`
-    : ""
-}
+      : ""
+    }
 
 ${bucket === "Crisis" ? "CRISIS: YOU MUST include the Indian Suicide Hotline at 9152987821. DO NOT mention 988. Gently acknowledge what they shared. Brief and warm." : ""}
 
@@ -567,12 +617,14 @@ Return JSON ONLY in this exact format:
 
 Rules:
 - Do NOT store personal identifiers (names, locations, workplaces).
-- Do NOT store explicit self-harm content. For crisis themes, use abstract phrasing like "persistent hopelessness".
+- Memory Types: 
+    - preference: Capture likes, dislikes, and hobbies (e.g. "Loves biryani", "Prefers early morning walks"). These should be specific.
+    - recurring_theme/trigger/etc: Capture emotional and behavioral patterns.
 - Keep content under 120 characters.
-- Content must be reusable and abstract, not a direct quote from the user.
-- Only extract genuinely durable patterns, not fleeting mentions.
+- Content must be reusable. Be specific for preferences, but abstract for emotional patterns.
+- Only extract genuinely durable patterns, habits, or established facts.
 - If nothing durable exists in this interaction, return {"add": []}.
-- Maximum 3 items per extraction.
+- Maximum 5 items per extraction.
 - Confidence should be 0.3-0.6 for first mentions, higher only if strongly evidenced.`;
 }
 
@@ -639,7 +691,8 @@ function validatePremiumConstraints(text: string): { passed: boolean; failures: 
   if (wordCount > 130) failures.push(`Over word limit: ${wordCount} words`);
 
   const questionCount = (text.match(/\?/g) || []).length;
-  if (questionCount > 1) failures.push(`Too many questions: ${questionCount}`);
+  if (questionCount === 0) failures.push("No question found");
+  if (questionCount > 2) failures.push(`Too many questions: ${questionCount}`);
 
   const paragraphs = text.split(/\n\n+/).filter((s) => s.trim());
   if (paragraphs.length > 4) failures.push(`Too many parts: ${paragraphs.length}`);
@@ -821,8 +874,11 @@ serve(async (req) => {
       console.error("Failed to fetch conversation state:", e);
     }
 
-    // ── Pass A: Generate draft (non-streaming) ──
-    const draftPrompt = buildDraftPrompt(
+    // ── Unified Pass: Direct Streaming ──
+    const formulationStyle = pickRandom(FORMULATION_STYLES, last_formulation_style);
+    const questionType = pickRandom(QUESTION_TYPES, last_question_type);
+
+    const basePrompt = buildDraftPrompt(
       mode,
       bucket,
       user_state || null,
@@ -830,26 +886,11 @@ serve(async (req) => {
       memoryPack,
       memory_moment,
     );
-    const draftResponse = await callAI(LOVABLE_API_KEY, draftPrompt, messages);
 
-    console.log("[mend_chat] Pass A draft generated, length:", draftResponse.length);
+    const unifiedPrompt = applyPremiumRewriteConstraints(basePrompt, mode, bucket, formulationStyle, questionType);
 
-    // ── Pass B: Premium rewrite (streaming) ──
-    const {
-      prompt: rewritePrompt,
-      formulationStyle,
-      questionType,
-    } = buildRewritePrompt(mode, bucket, last_formulation_style, last_question_type);
-    const rewriteMessages = [
-      ...messages,
-      { role: "assistant", content: draftResponse },
-      {
-        role: "user",
-        content: "Now rewrite this draft into the final premium response. Output ONLY the rewritten response.",
-      },
-    ];
-
-    const streamResponse = await streamAI(LOVABLE_API_KEY, rewritePrompt, rewriteMessages);
+    console.log(`[mend_chat] Starting unified streaming pass (${bucket})`);
+    const streamResponse = await streamAI(LOVABLE_API_KEY, unifiedPrompt, messages);
 
     if (!streamResponse.ok) {
       if (streamResponse.status === 429) {
@@ -872,116 +913,88 @@ serve(async (req) => {
       });
     }
 
-    // ── Validate + Debug log ──
-    const validation = validatePremiumConstraints(draftResponse);
-    console.log(
-      "[mend_chat]",
-      JSON.stringify({
-        experience_mode: mode,
-        communication_bucket: bucket,
-        premium_constraints_satisfied: validation.passed,
-        memory_pack_injected: !!memoryPack,
-        ...(validation.failures.length ? { constraint_failures: validation.failures } : {}),
-      }),
-    );
+    // ── Capture and Stream ──
+    let fullResponseText = "";
+    const decoder = new TextDecoder();
+    const encoder = new TextEncoder();
 
-    // ── Background: Pass C memory extraction + conversation snapshot ──
-    if (userId) {
-      (async () => {
-        try {
-          const supabase = getSupabaseAdmin();
-
-          // Find the most recent user message ID for evidence linking
-          const { data: recentMsg } = await supabase
-            .from("mend_messages")
-            .select("id")
-            .eq("user_id", userId)
-            .eq("role", "user")
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          // Run Pass C memory extraction and conversation snapshot in parallel
-          await Promise.all([
-            extractAndStoreMemories(
-              LOVABLE_API_KEY,
-              supabase,
-              userId!,
-              lastUserMsg,
-              draftResponse,
-              memoryPack,
-              recentMsg?.id,
-            ),
-            (async () => {
-              const snapshotPrompt = buildSnapshotPrompt();
-              const snapshotInput = [
-                { role: "user", content: lastUserMsg },
-                { role: "assistant", content: draftResponse },
-              ];
-
-              const snapshotRaw = await callAI(LOVABLE_API_KEY, snapshotPrompt, snapshotInput);
-              const jsonMatch = snapshotRaw.match(/\{[\s\S]*\}/);
-              if (jsonMatch) {
-                const snapshot = JSON.parse(jsonMatch[0]);
-                await supabase.from("conversation_state").upsert(
-                  {
-                    user_id: userId,
-                    summary: snapshot.summary || "",
-                    themes: snapshot.themes || [],
-                    last_updated: new Date().toISOString(),
-                  },
-                  { onConflict: "user_id" },
-                );
-                console.log("[mend_chat] Conversation snapshot updated");
-              }
-            })(),
-          ]);
-        } catch (e) {
-          console.error("Background tasks failed:", e);
-        }
-      })();
-    } else {
-      // Unauthenticated: just do snapshot if possible
-      (async () => {
-        try {
-          const authHeader = req.headers.get("authorization");
-          if (!authHeader) return;
-
-          const token = authHeader.replace("Bearer ", "");
-          const {
-            data: { user },
-          } = await createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!).auth.getUser(token);
-
-          if (!user) return;
-
-          const snapshotPrompt = buildSnapshotPrompt();
-          const snapshotInput = [
-            { role: "user", content: lastUserMsg },
-            { role: "assistant", content: draftResponse },
-          ];
-
-          const snapshotRaw = await callAI(LOVABLE_API_KEY, snapshotPrompt, snapshotInput);
-          const jsonMatch = snapshotRaw.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const snapshot = JSON.parse(jsonMatch[0]);
-            const supabase = getSupabaseAdmin();
-            await supabase.from("conversation_state").upsert(
-              {
-                user_id: user.id,
-                summary: snapshot.summary || "",
-                themes: snapshot.themes || [],
-                last_updated: new Date().toISOString(),
-              },
-              { onConflict: "user_id" },
-            );
+    const transformStream = new TransformStream({
+      transform(chunk, controller) {
+        const text = decoder.decode(chunk, { stream: true });
+        const lines = text.split("\n");
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = line.slice(6);
+            if (data === "[DONE]") continue;
+            try {
+              const json = JSON.parse(data);
+              const content = json.choices[0]?.delta?.content || "";
+              fullResponseText += content;
+            } catch (e) {
+              // Ignore partial JSON chunks
+            }
           }
-        } catch (e) {
-          console.error("Snapshot update failed:", e);
         }
-      })();
-    }
+        controller.enqueue(chunk);
+      },
+      flush() {
+        // Trigger background tasks once the stream is fully captured
+        console.log("[mend_chat] Stream captured, length:", fullResponseText.length);
 
-    return new Response(streamResponse.body, {
+        if (userId) {
+          (async () => {
+            try {
+              const supabase = getSupabaseAdmin();
+              const { data: recentMsg } = await supabase
+                .from("mend_messages")
+                .select("id")
+                .eq("user_id", userId)
+                .eq("role", "user")
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              await Promise.all([
+                extractAndStoreMemories(
+                  LOVABLE_API_KEY,
+                  supabase,
+                  userId!,
+                  lastUserMsg,
+                  fullResponseText,
+                  memoryPack,
+                  recentMsg?.id,
+                ),
+                (async () => {
+                  const snapshotPrompt = buildSnapshotPrompt();
+                  const snapshotInput = [
+                    { role: "user", content: lastUserMsg },
+                    { role: "assistant", content: fullResponseText },
+                  ];
+                  const snapshotRaw = await callAI(LOVABLE_API_KEY, snapshotPrompt, snapshotInput);
+                  const jsonMatch = snapshotRaw.match(/\{[\s\S]*\}/);
+                  if (jsonMatch) {
+                    const snapshot = JSON.parse(jsonMatch[0]);
+                    await supabase.from("conversation_state").upsert(
+                      {
+                        user_id: userId,
+                        summary: snapshot.summary || "",
+                        themes: snapshot.themes || [],
+                        last_updated: new Date().toISOString(),
+                      },
+                      { onConflict: "user_id" },
+                    );
+                  }
+                })(),
+              ]);
+            } catch (e) {
+              console.error("Background tasks failed:", e);
+            }
+          })();
+        }
+      },
+    });
+
+    return new Response(streamResponse.body!.pipeThrough(transformStream), {
       headers: {
         ...corsHeaders,
         "Content-Type": "text/event-stream",
