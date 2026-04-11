@@ -127,6 +127,30 @@ export type Database = {
         }
         Relationships: []
       }
+      mend_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       mend_memory_evidence: {
         Row: {
           created_at: string | null
@@ -170,6 +194,7 @@ export type Database = {
         Row: {
           communication_bucket: string | null
           content: string
+          conversation_id: string | null
           created_at: string | null
           experience_mode: string | null
           id: string
@@ -179,6 +204,7 @@ export type Database = {
         Insert: {
           communication_bucket?: string | null
           content: string
+          conversation_id?: string | null
           created_at?: string | null
           experience_mode?: string | null
           id?: string
@@ -188,13 +214,22 @@ export type Database = {
         Update: {
           communication_bucket?: string | null
           content?: string
+          conversation_id?: string | null
           created_at?: string | null
           experience_mode?: string | null
           id?: string
           role?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "mend_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "mend_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mend_signals: {
         Row: {
