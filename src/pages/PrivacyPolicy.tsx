@@ -146,7 +146,7 @@ export default function PrivacyPolicy() {
                         href="mailto:privacy@mendapp.com"
                         className="text-primary hover:underline"
                       >
-                        privacy@mendapp.com
+                        support@mendmyway.com
                       </a>
                       .
                     </p>

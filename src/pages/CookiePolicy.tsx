@@ -68,74 +68,7 @@ export default function CookiePolicy() {
 
                 <div>
                   <h2 className="text-2xl font-serif font-medium mb-3">
-                    3. Types of Cookies We Use
-                  </h2>
-
-                  {/* Cookie Table */}
-                  <div className="overflow-x-auto rounded-xl border border-border/50 mt-4">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-muted/30 border-b border-border/50">
-                          <th className="text-left px-4 py-3 font-medium text-foreground">
-                            Cookie
-                          </th>
-                          <th className="text-left px-4 py-3 font-medium text-foreground">
-                            Type
-                          </th>
-                          <th className="text-left px-4 py-3 font-medium text-foreground">
-                            Purpose
-                          </th>
-                          <th className="text-left px-4 py-3 font-medium text-foreground">
-                            Duration
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="text-muted-foreground">
-                        <tr className="border-b border-border/30">
-                          <td className="px-4 py-3 font-mono text-xs">
-                            sb-auth-token
-                          </td>
-                          <td className="px-4 py-3">Essential</td>
-                          <td className="px-4 py-3">Authentication</td>
-                          <td className="px-4 py-3">Session</td>
-                        </tr>
-                        <tr className="border-b border-border/30">
-                          <td className="px-4 py-3 font-mono text-xs">
-                            sidebar:state
-                          </td>
-                          <td className="px-4 py-3">Preference</td>
-                          <td className="px-4 py-3">Sidebar UI state</td>
-                          <td className="px-4 py-3">7 days</td>
-                        </tr>
-                        <tr>
-                          <td className="px-4 py-3 font-mono text-xs">
-                            theme
-                          </td>
-                          <td className="px-4 py-3">Preference</td>
-                          <td className="px-4 py-3">Dark/light mode</td>
-                          <td className="px-4 py-3">1 year</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <div>
-                  <h2 className="text-2xl font-serif font-medium mb-3">
-                    4. Third-Party Cookies
-                  </h2>
-                  <p className="text-muted-foreground leading-relaxed">
-                    We may use third-party services that set their own cookies,
-                    such as analytics providers. These cookies are governed by
-                    the respective third parties' privacy policies. We carefully
-                    select partners who align with our commitment to user
-                    privacy.
-                  </p>
-                </div>
-
-                <div>
-                  <h2 className="text-2xl font-serif font-medium mb-3">
-                    5. Managing Cookies
+                    3. Managing Cookies
                   </h2>
                   <p className="text-muted-foreground leading-relaxed">
                     You can control and manage cookies through your browser
@@ -148,7 +81,7 @@ export default function CookiePolicy() {
 
                 <div>
                   <h2 className="text-2xl font-serif font-medium mb-3">
-                    6. Updates to This Policy
+                    4. Updates to This Policy
                   </h2>
                   <p className="text-muted-foreground leading-relaxed">
                     We may update this Cookie Policy from time to time to reflect
@@ -160,7 +93,7 @@ export default function CookiePolicy() {
 
                 <div>
                   <h2 className="text-2xl font-serif font-medium mb-3">
-                    7. Contact Us
+                    5. Contact Us
                   </h2>
                   <p className="text-muted-foreground leading-relaxed">
                     If you have questions about our use of cookies, please
@@ -169,7 +102,7 @@ export default function CookiePolicy() {
                       href="mailto:privacy@mendapp.com"
                       className="text-primary hover:underline"
                     >
-                      privacy@mendapp.com
+                      support@mendmyway.com
                     </a>
                     .
                   </p>

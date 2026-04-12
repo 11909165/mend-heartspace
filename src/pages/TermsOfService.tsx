@@ -115,32 +115,7 @@ export default function TermsOfService() {
 
                 <div>
                   <h2 className="text-2xl font-serif font-medium mb-3">
-                    7. Intellectual Property
-                  </h2>
-                  <p className="text-muted-foreground leading-relaxed">
-                    All content, features, and functionality of MEND — including
-                    our AI models, design, and branding — are owned by MEND and
-                    protected by intellectual property laws. You retain ownership
-                    of your personal journal entries and content you create.
-                  </p>
-                </div>
-
-                <div>
-                  <h2 className="text-2xl font-serif font-medium mb-3">
-                    8. Limitation of Liability
-                  </h2>
-                  <p className="text-muted-foreground leading-relaxed">
-                    MEND shall not be liable for any indirect, incidental,
-                    special, consequential, or punitive damages resulting from
-                    your use of the service. Our total liability shall not
-                    exceed the amount you have paid us in the twelve months
-                    preceding the claim.
-                  </p>
-                </div>
-
-                <div>
-                  <h2 className="text-2xl font-serif font-medium mb-3">
-                    9. Changes to Terms
+                    7. Changes to Terms
                   </h2>
                   <p className="text-muted-foreground leading-relaxed">
                     We may update these Terms of Service from time to time. We
@@ -162,7 +137,7 @@ export default function TermsOfService() {
                       href="mailto:legal@mendapp.com"
                       className="text-primary hover:underline"
                     >
-                      legal@mendapp.com
+                      support@mendmyway.com
                     </a>
                     .
                   </p>

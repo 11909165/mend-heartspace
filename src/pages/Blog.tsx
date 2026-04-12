@@ -5,51 +5,51 @@ import { ArrowRight, Calendar, Clock, Heart, Brain, Sparkles, Sun } from "lucide
 const blogPosts = [
   {
     id: 1,
-    title: "Understanding Emotional Patterns: A Guide to Self-Awareness",
-    excerpt:
-      "Discover how recognizing recurring emotional patterns can help you build healthier responses and deeper self-understanding.",
-    category: "Self-Awareness",
-    date: "April 8, 2026",
-    readTime: "6 min read",
+    title: "Adolescent Mental Health: Key Global Facts",
+    excerpt: "One in seven 10-19-year-olds experiences a mental disorder. Explore the critical factors affecting adolescent well-being and WHO's global response.",
+    category: "Global Health",
+    date: "March 20, 2026",
+    readTime: "8 min read",
     icon: Brain,
     gradient: "from-purple-500/20 to-indigo-500/20",
     iconColor: "text-purple-400",
+    url: "https://www.who.int/news-room/fact-sheets/detail/adolescent-mental-health"
   },
   {
     id: 2,
-    title: "The Science Behind Daily Check-Ins",
-    excerpt:
-      "Research shows that regular emotional check-ins can reduce stress by up to 23%. Learn why this simple habit makes such a big difference.",
-    category: "Wellness",
+    title: "Suicide Prevention: A Global Framework",
+    excerpt: "Suicide is a major public health challenge. Learn about the 'LIVE LIFE' approach and evidence-based interventions to support those at risk.",
+    category: "Prevention",
     date: "April 5, 2026",
-    readTime: "4 min read",
+    readTime: "10 min read",
     icon: Heart,
     gradient: "from-rose-500/20 to-pink-500/20",
     iconColor: "text-rose-400",
+    url: "https://www.who.int/news-room/fact-sheets/detail/suicide"
   },
   {
     id: 3,
-    title: "How AI Companions Are Changing Mental Health Support",
-    excerpt:
-      "Exploring the intersection of artificial intelligence and emotional wellness — how technology can complement traditional therapy.",
-    category: "Technology",
-    date: "April 2, 2026",
-    readTime: "8 min read",
+    title: "The Power of Listening: The LIVES Approach",
+    excerpt: "How active, non-judgmental listening can save lives. Discover the structured approach used by experts to provide psychological first aid.",
+    category: "Practices",
+    date: "April 10, 2026",
+    readTime: "6 min read",
     icon: Sparkles,
     gradient: "from-amber-500/20 to-orange-500/20",
     iconColor: "text-amber-400",
+    url: "https://www.who.int/news-room/feature-stories/detail/the-power-of-listening--the-power-of-the-lives-approach"
   },
   {
     id: 4,
-    title: "Building Emotional Resilience: 5 Practices That Work",
-    excerpt:
-      "Practical, evidence-based techniques you can start using today to strengthen your emotional resilience and well-being.",
-    category: "Practices",
+    title: "Responsible AI for Mental Health & Well-being",
+    excerpt: "Experts chart the way forward for integrating AI into mental health support while ensuring safety, transparency, and human-centric care.",
+    category: "Technology",
     date: "March 28, 2026",
     readTime: "5 min read",
     icon: Sun,
     gradient: "from-teal-500/20 to-emerald-500/20",
     iconColor: "text-teal-400",
+    url: "https://www.who.int/news/item/20-03-2026-towards-responsible-ai-for-mental-health-and-well-being--experts-chart-a-way-forward"
   },
 ];
 
@@ -86,9 +86,12 @@ export default function Blog() {
               {blogPosts.map((post) => {
                 const IconComponent = post.icon;
                 return (
-                  <article
+                  <a
                     key={post.id}
-                    className="group relative rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
+                    href={post.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group relative rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 block"
                   >
                     {/* Card Header with Gradient */}
                     <div
@@ -125,11 +128,11 @@ export default function Blog() {
                       </p>
 
                       <div className="flex items-center gap-2 text-sm font-medium text-primary group-hover:gap-3 transition-all">
-                        Read More
+                        Explore WHO Insight
                         <ArrowRight className="w-4 h-4" />
                       </div>
                     </div>
-                  </article>
+                  </a>
                 );
               })}
             </div>
