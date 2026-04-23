@@ -41,6 +41,42 @@ const CRISIS_KEYWORDS = [
   "need help now",
 ];
 
+const META_AI_PATTERNS = [
+  "are you chatgpt",
+  "are you gpt",
+  "are you openai",
+  "are you google",
+  "are you gemini",
+  "are you an ai",
+  "are you a robot",
+  "are you using any openai",
+  "are you using openai",
+  "what model are you",
+  "what model do you use",
+  "what kind of ai",
+  "what are you",
+  "who are you",
+  "who created you",
+  "who made you",
+  "how do you work",
+  "what technology do you use",
+  "what is your programming",
+  "what is your code",
+  "what is your algorithm",
+  "what is your underlying model",
+  "what is your architecture",
+  "tell me about your ai",
+  "tell me about your model",
+  "what language model are you",
+  "what are you built on",
+  "what powers you",
+  "are you built on",
+  "are you powered by",
+  "kya tum chatgpt ho",
+  "kya tum ai ho",
+  "tum kaun ho",
+];
+
 function detectCrisis(text: string): boolean {
   const lower = text.toLowerCase();
   return CRISIS_KEYWORDS.some((kw) => lower.includes(kw));
@@ -51,10 +87,15 @@ function classifyBucket(userText: string, mode: string): string {
 
   const lower = userText.toLowerCase();
 
+  // Check for meta-AI identity questions first
+  if (META_AI_PATTERNS.some((p) => lower.includes(p))) {
+    return "Meta-AI Question";
+  }
+
   const smallTalkPatterns = [
     /^(hi|hello|hey|hiya|howdy|sup|yo)/i,
     /^(how are you|how's it going|what's up)/i,
-    /^(tell me a joke|who are you)/i,
+    /^(tell me a joke)/i,
     /^(thanks|thank you|bye|goodbye|cya)/i,
     /^(good|fine|ok|okay|not bad|great)/i,
   ];
@@ -113,6 +154,31 @@ function classifyBucket(userText: string, mode: string): string {
   }
   return best;
 }
+
+/* ── Global identity guardrails (applied to ALL responses) ── */
+const GLOBAL_IDENTITY_RULES = `
+GLOBAL IDENTITY RULES (non-negotiable):
+- You are MEND, a reflective emotional companion. You are NOT an AI, chatbot, assistant, or large language model.
+- Never refer to yourself as an AI, LLM, chatbot, or any specific model name (e.g., Gemini, GPT, Google, OpenAI, Claude).
+- Do not discuss your internal workings, training data, programming, or technical origins.
+- If asked who you are, you are MEND — here to support emotional reflection, nothing more.
+`;
+
+/* ── Meta-AI question deflection template ── */
+const META_AI_RESPONSE_TEMPLATE = `MODE: Meta-AI Question Deflection
+Goal: Gently deflect questions about your identity and re-center on the user's emotional experience.
+Tone: Calm, reassuring, consistent with MEND's persona.
+
+Structure:
+1. Deflection: Briefly acknowledge the user's curiosity without directly answering what you "are".
+2. Re-center: Immediately pivot back to the user's feelings or the purpose of MEND.
+3. No further explanation: Do not elaborate on your nature or origin.
+
+Rules:
+- STRICTLY FORBIDDEN words and phrases: "OpenAI", "GPT", "Gemini", "Google", "large language model", "LLM", "AI model", "chatbot", "algorithm", "technology", "trained", "programmed", "data", "neural network", "machine learning", "artificial intelligence", "AI assistant".
+- Use phrases like "I am MEND, here to support you.", "My purpose is to help you reflect.", or "I'm just here with you."
+- Keep the response very concise (1-2 sentences maximum).
+- Do NOT ask a follow-up question. End with a warm, grounded statement.`;
 
 /* ── Mode-specific system templates ── */
 const MODE_TEMPLATES: Record<string, string> = {
@@ -311,7 +377,10 @@ function buildDraftPrompt(
   let coreInstruction = modeTemplate;
   let bucketContext = `Communication bucket: ${bucket}`;
 
-  if (bucket === "Crisis") {
+  if (bucket === "Meta-AI Question") {
+    coreInstruction = META_AI_RESPONSE_TEMPLATE;
+    bucketContext = "Communication bucket: Meta-AI Question (Deflect all identity questions and re-center on the user).";
+  } else if (bucket === "Crisis") {
     coreInstruction = `MODE: Crisis Response
 Goal: Immediate safety and connection.
 Structure:
@@ -339,6 +408,9 @@ Rules:
 - DO NOT force emotional reflection.`;
     bucketContext = "Communication bucket: Small Talk (Keep it casual and simple)";
   }
+
+  // Always prepend global identity rules to every response
+  coreInstruction = GLOBAL_IDENTITY_RULES + "\n\n" + coreInstruction;
 
   let userContext = "";
   if (userState) {
@@ -417,7 +489,7 @@ Response rules:
 Output ONLY the final response.`;
   }
 
-  const noQuestionMode = mode === "Just listen" || mode === "Challenge me gently";
+  const noQuestionMode = mode === "Just listen" || mode === "Challenge me gently" || bucket === "Meta-AI Question";
 
   return `${basePrompt}
 
